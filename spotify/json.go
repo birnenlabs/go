@@ -1,0 +1,57 @@
+package spotify
+
+// Structures used to parse JSON returned by Spotify API
+
+import (
+	"strings"
+)
+
+type SpotifyArtist struct {
+	Id   string
+	Name string
+}
+
+type SpotifyAlbum struct {
+	Id      string
+	Name    string
+	Artists []SpotifyArtist
+}
+
+type SpotifyTrack struct {
+	Id         string
+	Name       string
+	DurationMs int64 `json:"duration_ms"`
+	Popularity int
+	Artists    []SpotifyArtist
+	Album      SpotifyAlbum
+}
+
+type PlaylistItem struct {
+	Track SpotifyTrack
+}
+
+type PlaylistResponse struct {
+	Items []PlaylistItem
+	Total int
+	Next  string
+}
+
+type SearchResponseBody struct {
+	Items []SpotifyTrack
+}
+
+type SearchResponse struct {
+	Tracks SearchResponseBody
+}
+
+func (t SpotifyTrack) String() string {
+	return t.ArtistAsString() + " - " + t.Name
+}
+
+func (t SpotifyTrack) ArtistAsString() string {
+	var artists = []string{}
+	for _, artist := range t.Artists {
+		artists = append(artists, artist.Name)
+	}
+	return strings.Join(artists, ", ")
+}
