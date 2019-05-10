@@ -14,7 +14,7 @@ Example of the file to use with Spotify:
         "ClientID": "<your client id>",
         "ClientSecret": "<your client_secret>",
         "Scopes": ["playlist-modify-public"],
-        "RedirectURL": "https://ojoj.ch/code",
+        "RedirectURL": "https://birnenlabs.com/code",
         "Endpoint": {
             "AuthURL": "https://accounts.spotify.com/authorize",
             "TokenURL": "https://accounts.spotify.com/api/token"
@@ -26,7 +26,7 @@ The file should be saved in the following conf directory: `$HOME/.config/oauth-s
 ## Redirect URL
 
 The OAuth library is meant to be used in local applications, so the user needs to copy and paste the code.
-Some providers allows `urn:ietf:wg:oauth:2.0:oob` as the `RedirectUri` - the code will be listed in the webpage. When `urn:ietf:wg:oauth:2.0:oob` is not supported you can use `https://ojoj.ch/code` - it is a simple javascript page that will display all the parameters sent to it - see the [example](https://ojoj.ch/code?code=the-example-code-returned-from-the-page&param1=another-unrelated-parameter).
+Some providers allows `urn:ietf:wg:oauth:2.0:oob` as the `RedirectUri` - the code will be listed in the webpage. When `urn:ietf:wg:oauth:2.0:oob` is not supported you can use `https://birnenlabs.com/code` - it is a simple javascript page that will display all the parameters sent to it - see the [example](https://birnenlabs.com/code?code=the-example-code-returned-from-the-page&param1=another-unrelated-parameter).
 
 ## Code
 
@@ -57,7 +57,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"ojoj.ch/oauth"
+	"birnenlabs.com/oauth"
 )
 
 func main() {

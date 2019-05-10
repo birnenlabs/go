@@ -1,9 +1,9 @@
 package spotify
 
 import (
+	"birnenlabs.com/oauth"
+	"birnenlabs.com/ratelimit"
 	"context"
-	"ojoj.ch/oauth"
-	"ojoj.ch/ratelimit"
 	"time"
 )
 

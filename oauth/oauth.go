@@ -2,11 +2,11 @@
 package oauth
 
 import (
+	"birnenlabs.com/conf"
 	"context"
 	"fmt"
 	"golang.org/x/oauth2"
 	"net/http"
-	"ojoj.ch/conf"
 	"os"
 
 	"github.com/golang/glog"

@@ -1,11 +1,11 @@
 package automate
 
 import (
+	"birnenlabs.com/conf"
 	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"ojoj.ch/conf"
 	"os"
 	"regexp"
 	"strings"
