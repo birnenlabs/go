@@ -16,8 +16,8 @@ var (
 )
 
 // Opens icy stream and searches for the song title. Song and title will be pushed to the titleChannel.
-func Open(urlString string, log string, titleChannel chan string) error {
-	glog.V(1).Infof("[%15.15s] Starting stream %q...", log, urlString)
+func Open(urlString string, titleChannel chan string) error {
+	glog.V(1).Infof("Starting stream %q...", urlString)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", urlString, nil)
@@ -41,7 +41,7 @@ func Open(urlString string, log string, titleChannel chan string) error {
 		glog.V(10).Infof("%v", b)
 		t := findStreamTitle(b)
 		if t != nil && *t != "" && *t != lastTitle {
-			glog.V(1).Infof("[%15.15s] New title found: %q.", log, *t)
+			glog.V(1).Infof("New title found: %q.", *t)
 			titleChannel <- *t
 			lastTitle = *t
 			lastTitleTime = time.Now()
