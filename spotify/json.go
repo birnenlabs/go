@@ -45,7 +45,12 @@ type SearchResponse struct {
 }
 
 func (t SpotifyTrack) String() string {
-	return t.ArtistAsString() + " - " + t.Name
+	artist := t.ArtistAsString()
+	if len(artist)+len(t.Name) > 0 {
+		return t.ArtistAsString() + " - " + t.Name
+	} else {
+		return ""
+	}
 }
 
 func (t SpotifyTrack) ArtistAsString() string {
