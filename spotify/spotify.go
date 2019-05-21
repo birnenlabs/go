@@ -35,6 +35,6 @@ func New(ctx context.Context, market string) (*Spotify, error) {
 
 	return &Spotify{
 		httpClient: ratelimit.New(httpClient, time.Second),
-		market: market,
+		market:     market,
 	}, nil
 }
