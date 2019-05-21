@@ -72,7 +72,7 @@ func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]Spotif
 func (s *Spotify) FindTracks(ctx context.Context, query string) ([]SpotifyTrack, error) {
 	url := fmt.Sprintf(
 		"https://api.spotify.com/v1/search?type=track&market=%s&limit=50&q=%s",
-		"pl", url.QueryEscape(updateQueryString(query)))
+		s.market, url.QueryEscape(updateQueryString(query)))
 
 	glog.V(1).Infof("Find tracks url: %q.", url)
 	resp, err := s.httpClient.Get(url)

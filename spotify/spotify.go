@@ -10,9 +10,11 @@ import (
 type Spotify struct {
 	// Client with 1 qps limit
 	httpClient ratelimit.AnyClient
+	// market to search songs (e.g. "pl")
+	market string
 }
 
-func New(ctx context.Context) (*Spotify, error) {
+func New(ctx context.Context, market string) (*Spotify, error) {
 	// First create OAuth.
 	oauthClient, err := oauth.Create("spotify")
 	if err != nil {
@@ -33,5 +35,6 @@ func New(ctx context.Context) (*Spotify, error) {
 
 	return &Spotify{
 		httpClient: ratelimit.New(httpClient, time.Second),
+		market: market,
 	}, nil
 }
