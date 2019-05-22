@@ -1,6 +1,7 @@
 package sources
 
 import (
+	"birnenlabs.com/ratelimit"
 	"bufio"
 	"context"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 type webSource struct {
 	r               *rand.Rand
+	httpClient      ratelimit.AnyClient
 	findSongsInHtml func(line string) []string
 	// Generates url for a given date and the previous valid timepoint (e.g. if page generates new content every week, returned time should be t minus week).
 	generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)
@@ -27,6 +29,7 @@ func newWebSource(findSongsInHtml func(line string) []string, generateHistoryUrl
 		r:                  r,
 		findSongsInHtml:    findSongsInHtml,
 		generateHistoryUrl: generateHistoryUrl,
+		httpClient:         ratelimit.New(&http.Client{}, time.Millisecond*10),
 	}
 }
 
@@ -119,7 +122,7 @@ func (w *webSource) doStartHistory(song chan<- Song, urlBase string, start time.
 }
 
 func (w *webSource) findSongsInPage(url string) ([]string, error) {
-	resp, err := http.Get(url)
+	resp, err := w.httpClient.Get(url)
 	if err != nil {
 		return nil, err
 	}
