@@ -29,7 +29,7 @@ func newWebSource(findSongsInHtml func(line string) []string, generateHistoryUrl
 		r:                  r,
 		findSongsInHtml:    findSongsInHtml,
 		generateHistoryUrl: generateHistoryUrl,
-		httpClient:         ratelimit.New(&http.Client{}, time.Millisecond*10),
+		httpClient:         ratelimit.New(&http.Client{}, time.Second*10),
 	}
 }
 
