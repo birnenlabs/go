@@ -77,6 +77,7 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 			return nil, err
 		}
 
+		s.addToCache(conf.Playlist, *bestTrack)
 		result.SongAdded = true
 		return result, nil
 	} else {
@@ -133,3 +134,11 @@ func (s *spotifySaver) updateCache(ctx context.Context, playlistId string) error
 	s.cache[playlistId] = tracks
 	return nil
 }
+
+func (s *spotifySaver) addToCache(playlistId string, track spotify.SpotifyTrack) {
+        s.rwLock.Lock()
+        defer s.rwLock.Unlock()
+
+        s.cache[playlistId] = append(s.cache[playlistId], track)
+}
+
