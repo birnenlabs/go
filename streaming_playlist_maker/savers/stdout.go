@@ -12,7 +12,7 @@ func newStdout() (SongSaver, error) {
 }
 
 func (s *stdoutSaver) Save(ctx context.Context, conf SaverJob, artistTitle string) (*Status, error) {
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 100)
 	return &Status{
 		MatchQuality: -99,
 		FoundTitle:   "NOTHING WAS SAVED",
