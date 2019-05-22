@@ -12,8 +12,8 @@ type SaverJob struct {
 }
 
 type Status struct {
-	// True if playlist cache was used.
-	PlaylistCached bool
+	// True if no server requests were done.
+	Cached bool
 	// True if song was added.
 	SongAdded bool
 	// Name of the song found by the saver, empty if not found.

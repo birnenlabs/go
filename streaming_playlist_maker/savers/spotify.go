@@ -11,77 +11,110 @@ import (
 const validMatch = 75
 
 type spotifySaver struct {
-	spotify *spotify.Spotify
-	cache   map[string][]spotify.SpotifyTrack
-	rwLock  sync.RWMutex
+	spotify           *spotify.Spotify
+	playlistCache     map[string][]spotify.SpotifyTrack
+	notFoundCache     map[string]spotify.SpotifyTrack
+	playlistCacheLock sync.RWMutex
+	notFoundCacheLock sync.RWMutex
 }
 
 // TODO: market should be a parameter
 func newSpotify(ctx context.Context) (SongSaver, error) {
-	cache := make(map[string][]spotify.SpotifyTrack)
+	playlistCache := make(map[string][]spotify.SpotifyTrack)
+	notFoundCache := make(map[string]spotify.SpotifyTrack)
 	s, err := spotify.New(ctx, "pl")
 	if err != nil {
 		return nil, err
 	}
 
 	return &spotifySaver{
-		spotify: s,
-		cache:   cache,
+		spotify:       s,
+		playlistCache: playlistCache,
+		notFoundCache: notFoundCache,
 	}, nil
 }
 
 func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle string) (*Status, error) {
 	glog.V(3).Infof("Saving song: %v", artistTitle)
 
-	bestTrack, bestTrackMatch, err := s.findSpotifyTrack(ctx, artistTitle)
+	// First check if our song is already in cache
+	similarTrack, similarTrackMatch := s.findSongInPlaylistCache(conf.Playlist, artistTitle)
+	if similarTrackMatch >= validMatch {
+		return &Status{
+			FoundTitle:   "<cached>",
+			MatchQuality: similarTrackMatch,
+			SongAdded:    false,
+			Cached:       true,
+			SimilarTitle: similarTrack.String(),
+		}, nil
+	} else {
+		// If not in playlist cache, let's check in notFound cache:
+		s.notFoundCacheLock.RLock()
+		track, ok := s.notFoundCache[artistTitle]
+		s.notFoundCacheLock.RUnlock()
+
+		if ok {
+			return &Status{
+				FoundTitle:   track.String(),
+				MatchQuality: spotify.CalculateMatchRatio(artistTitle, track),
+				SongAdded:    false,
+				Cached:       true,
+				SimilarTitle: "",
+			}, nil
+		}
+	}
+
+	// If not found in caches, let's try to search in spotify
+	newTrack, newTrackMatch, err := s.findSpotifyTrack(ctx, artistTitle)
 	if err != nil {
 		return nil, err
 	}
 
-	result := &Status{
-		// common fields
-		FoundTitle:   fmt.Sprintf("%v", bestTrack),
-		MatchQuality: bestTrackMatch,
-		// default fields
-		SongAdded:      false,
-		PlaylistCached: false,
-		SimilarTitle:   "",
-	}
+	// if new track is good match add it to the playlist
+	if newTrackMatch >= validMatch {
 
-	if bestTrackMatch >= validMatch {
-
-		// First check if our song was already added there - let's use cache first!
-		similarTrack := s.findSimilarSongInCache(conf.Playlist, artistTitle)
-		if similarTrack != nil {
-			result.PlaylistCached = true
-			result.SimilarTitle = similarTrack.String()
-			return result, nil
-
-		}
-
-		// If not found update cache and try again
-		err = s.updateCache(ctx, conf.Playlist)
+		// but update cache first and check if it is not there already
+		err := s.updateCache(ctx, conf.Playlist)
 		if err != nil {
 			return nil, err
 		}
-		similarTrack = s.findSimilarSongInCache(conf.Playlist, artistTitle)
-		if similarTrack != nil {
-			result.SimilarTitle = similarTrack.String()
-			return result, nil
-
+		similarTrack, similarTrackMatch = s.findSongInPlaylistCache(conf.Playlist, artistTitle)
+		if similarTrackMatch >= validMatch {
+			return &Status{
+				FoundTitle:   newTrack.String(),
+				MatchQuality: similarTrackMatch,
+				SongAdded:    false,
+				Cached:       false,
+				SimilarTitle: similarTrack.String(),
+			}, nil
 		}
 
-		// If not found - Add to the playlist
-		err = s.spotify.AddToPlaylist(ctx, conf.Playlist, bestTrack.Id)
+		err = s.spotify.AddToPlaylist(ctx, conf.Playlist, newTrack.Id)
 		if err != nil {
 			return nil, err
 		}
+		s.addToCache(conf.Playlist, *newTrack)
 
-		s.addToCache(conf.Playlist, *bestTrack)
-		result.SongAdded = true
-		return result, nil
+		return &Status{
+			FoundTitle:   newTrack.String(),
+			MatchQuality: newTrackMatch,
+			SongAdded:    true,
+			Cached:       false,
+			SimilarTitle: "",
+		}, nil
 	} else {
-		return result, nil
+		// Add not found track to cache
+		s.notFoundCacheLock.Lock()
+		s.notFoundCache[artistTitle] = *newTrack
+		s.notFoundCacheLock.Unlock()
+
+		return &Status{
+			FoundTitle:   newTrack.String(),
+			MatchQuality: newTrackMatch,
+			SongAdded:    false,
+			Cached:       false,
+			SimilarTitle: "",
+		}, nil
 	}
 }
 
@@ -111,34 +144,42 @@ func (s *spotifySaver) findSpotifyTrack(ctx context.Context, artistTitle string)
 	return &bestTrack, bestTrackMatch, nil
 }
 
-func (s *spotifySaver) findSimilarSongInCache(playlistId string, artistTitle string) *spotify.SpotifyTrack {
-	s.rwLock.RLock()
-	defer s.rwLock.RUnlock()
+func (s *spotifySaver) findSongInPlaylistCache(playlistId string, artistTitle string) (*spotify.SpotifyTrack, int) {
+	s.playlistCacheLock.RLock()
+	defer s.playlistCacheLock.RUnlock()
 
-	for _, track := range s.cache[playlistId] {
-		if spotify.CalculateMatchRatio(artistTitle, track) >= validMatch {
-			return &track
+	bestTrackMatch := -1
+	var bestTrack spotify.SpotifyTrack
+	for _, track := range s.playlistCache[playlistId] {
+		currentMatch := spotify.CalculateMatchRatio(artistTitle, track)
+		if currentMatch > bestTrackMatch {
+			bestTrackMatch = currentMatch
+			bestTrack = track
 		}
+		if bestTrackMatch == 100 {
+			break
+		}
+
 	}
-	return nil
+	return &bestTrack, bestTrackMatch
 }
 
 func (s *spotifySaver) updateCache(ctx context.Context, playlistId string) error {
-	s.rwLock.Lock()
-	defer s.rwLock.Unlock()
-
 	tracks, err := s.spotify.ListPlaylist(ctx, playlistId)
 	if err != nil {
 		return err
 	}
-	s.cache[playlistId] = tracks
+
+	s.playlistCacheLock.Lock()
+	defer s.playlistCacheLock.Unlock()
+
+	s.playlistCache[playlistId] = tracks
 	return nil
 }
 
 func (s *spotifySaver) addToCache(playlistId string, track spotify.SpotifyTrack) {
-        s.rwLock.Lock()
-        defer s.rwLock.Unlock()
+	s.playlistCacheLock.Lock()
+	defer s.playlistCacheLock.Unlock()
 
-        s.cache[playlistId] = append(s.cache[playlistId], track)
+	s.playlistCache[playlistId] = append(s.playlistCache[playlistId], track)
 }
-
