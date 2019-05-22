@@ -14,20 +14,30 @@ import (
 type webSource struct {
 	r               *rand.Rand
 	findSongsInHtml func(line string) []string
+	// Generates url for a given date and the previous valid timepoint (e.g. if page generates new content every week, returned time should be t minus week).
+	generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)
 }
 
-const initialSleep = 5
+const initialSleep = 10
 
-func newWebSource(findSongsInHtml func(line string) []string) *webSource {
+func newWebSource(findSongsInHtml func(line string) []string, generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)) *webSource {
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 	return &webSource{
-		r:               r,
-		findSongsInHtml: findSongsInHtml,
+		r:                  r,
+		findSongsInHtml:    findSongsInHtml,
+		generateHistoryUrl: generateHistoryUrl,
 	}
 }
 
 func (w *webSource) Start(ctx context.Context, conf SourceJob, song chan<- Song) error {
+	if w.findSongsInHtml == nil {
+		return fmt.Errorf("findSongsInHtml not set")
+	}
+	if w.generateHistoryUrl == nil {
+		return fmt.Errorf("generateHistoryUrl not set")
+	}
+
 	urlParts := strings.Split(conf.SourceUrl, "|")
 
 	if len(urlParts) == 1 {
@@ -53,8 +63,8 @@ func (w *webSource) doStart(song chan<- Song, url string) {
 
 	glog.V(3).Infof("Starting web source with url: %v", url)
 
-	// Sleep between 30 to 60 seconds to avoid many requests to the server.
-	time.Sleep(time.Second * time.Duration(initialSleep+w.r.Intn(initialSleep)))
+	// Initial random sleep to avoid multiple many requests to the server.
+	time.Sleep(time.Second * time.Duration(w.r.Intn(initialSleep)))
 	songs, err := w.findSongsInPage(url)
 	if err != nil {
 		song <- Song{
@@ -72,13 +82,17 @@ func (w *webSource) doStart(song chan<- Song, url string) {
 func (w *webSource) doStartHistory(song chan<- Song, urlBase string, start time.Time, end time.Time) {
 	defer close(song)
 
-	glog.V(3).Infof("Starting historical web source %v-%v with url: %v", start, end, urlBase)
+	glog.V(1).Infof("Starting historical web source %v-%v with url: %v", start, end, urlBase)
 
 	t := end
 	for !t.Before(start) {
-		// Skip christmas songs
-		if int(t.Month()) != 12 {
-			url := fmt.Sprintf("%v&m=%v&y=%v", urlBase, int(t.Month()), t.Year())
+		// Skip christmas songs, but still generate next date
+		var nextTs time.Time
+		if int(t.Month()) == 12 {
+			_, nextTs = w.generateHistoryUrl(urlBase, t)
+		} else {
+			var url string
+			url, nextTs = w.generateHistoryUrl(urlBase, t)
 
 			songs, err := w.findSongsInPage(url)
 			if err != nil {
@@ -86,6 +100,7 @@ func (w *webSource) doStartHistory(song chan<- Song, urlBase string, start time.
 					Error: err,
 				}
 			}
+			glog.V(2).Infof("%v returned %v songs", url, len(songs))
 			for _, s := range songs {
 				song <- Song{
 					ArtistTitle: s,
@@ -93,8 +108,13 @@ func (w *webSource) doStartHistory(song chan<- Song, urlBase string, start time.
 				}
 			}
 		}
-
-		t = t.AddDate(0, -1, 0)
+		if !nextTs.Before(t) {
+			song <- Song{
+				Error: fmt.Errorf("Timestamp returned by generateHistoryUrl (%v) not before current (%v)", nextTs, t),
+			}
+			break
+		}
+		t = nextTs
 	}
 }
 

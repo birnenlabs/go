@@ -1,9 +1,11 @@
 package sources
 
 import (
+	"fmt"
 	"github.com/golang/glog"
 	"html"
 	"strings"
+	"time"
 )
 
 const odsluchaneSpotifyUrl = "https://open.spotify.com/search/results/"
@@ -14,7 +16,7 @@ type odsluchaneSource struct {
 
 func newOdsluchane() *odsluchaneSource {
 	result := &odsluchaneSource{}
-	result.webSource = newWebSource(result.findSongsInHtml)
+	result.webSource = newWebSource(result.findSongsInHtml, result.generateHistoryUrl)
 	return result
 }
 
@@ -31,4 +33,8 @@ func (o *odsluchaneSource) findSongsInHtml(s string) []string {
 		}
 	}
 	return []string{}
+}
+
+func (o *odsluchaneSource) generateHistoryUrl(urlBase string, t time.Time) (string, time.Time) {
+	return fmt.Sprintf("%v&m=%v&y=%v", urlBase, int(t.Month()), t.Year()), t.AddDate(0, -1, 0)
 }
