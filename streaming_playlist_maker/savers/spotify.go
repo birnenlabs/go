@@ -34,6 +34,11 @@ func newSpotify(ctx context.Context) (SongSaver, error) {
 	}, nil
 }
 
+func (s *spotifySaver) Init(ctx context.Context, conf SaverJob) error {
+	glog.V(3).Infof("Initializing cache for playlist: %v", conf.Playlist)
+	return s.updateCache(ctx, conf.Playlist)
+}
+
 func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle string) (*Status, error) {
 	glog.V(3).Infof("Saving song: %v", artistTitle)
 
@@ -73,26 +78,29 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 	// if new track is good match add it to the playlist
 	if newTrackMatch >= validMatch {
 
-		// but update cache first and check if it is not there already
-		err := s.updateCache(ctx, conf.Playlist)
-		if err != nil {
-			return nil, err
-		}
-		similarTrack, similarTrackMatch = s.findSongInPlaylistCache(conf.Playlist, artistTitle)
-		if similarTrackMatch >= validMatch {
-			return &Status{
-				FoundTitle:   newTrack.String(),
-				MatchQuality: similarTrackMatch,
-				SongAdded:    false,
-				Cached:       false,
-				SimilarTitle: similarTrack.String(),
-			}, nil
-		}
+		// Temporarily removing cache check to speed up adding process.
+		//		// but update cache first and check if it is not there already
+		//		err := s.updateCache(ctx, conf.Playlist)
+		//		if err != nil {
+		//			return nil, err
+		//		}
+		//		similarTrack, similarTrackMatch = s.findSongInPlaylistCache(conf.Playlist, artistTitle)
+		//		if similarTrackMatch >= validMatch {
+		//			return &Status{
+		//				FoundTitle:   newTrack.String(),
+		//				MatchQuality: similarTrackMatch,
+		//				SongAdded:    false,
+		//				Cached:       false,
+		//				SimilarTitle: similarTrack.String(),
+		//			}, nil
+		//		}
 
 		err = s.spotify.AddToPlaylist(ctx, conf.Playlist, newTrack.Id)
 		if err != nil {
 			return nil, err
 		}
+
+		// Also add to cache
 		s.addToCache(conf.Playlist, *newTrack)
 
 		return &Status{

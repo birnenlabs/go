@@ -25,6 +25,9 @@ type Status struct {
 }
 
 type SongSaver interface {
+	// Initializes the cache
+	Init(ctx context.Context, conf SaverJob) error
+
 	// Saves song to the playlist. This method should block and return the result of saving.
 	Save(ctx context.Context, conf SaverJob, artistTitle string) (*Status, error)
 }
