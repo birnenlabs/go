@@ -6,30 +6,23 @@ import (
 	"context"
 	"fmt"
 	"github.com/golang/glog"
-	"math/rand"
 	"net/http"
 	"strings"
 	"time"
 )
 
 type webSource struct {
-	r               *rand.Rand
 	httpClient      ratelimit.AnyClient
 	findSongsInHtml func(line string) []string
 	// Generates url for a given date and the previous valid timepoint (e.g. if page generates new content every week, returned time should be t minus week).
 	generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)
 }
 
-const initialSleep = 10
-
 func newWebSource(findSongsInHtml func(line string) []string, generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)) *webSource {
-	s := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(s)
 	return &webSource{
-		r:                  r,
 		findSongsInHtml:    findSongsInHtml,
 		generateHistoryUrl: generateHistoryUrl,
-		httpClient:         ratelimit.New(&http.Client{}, time.Second*10),
+		httpClient:         ratelimit.New(&http.Client{}, time.Second*3),
 	}
 }
 
@@ -66,8 +59,6 @@ func (w *webSource) doStart(song chan<- Song, url string) {
 
 	glog.V(3).Infof("Starting web source with url: %v", url)
 
-	// Initial random sleep to avoid multiple many requests to the server.
-	time.Sleep(time.Second * time.Duration(w.r.Intn(initialSleep)))
 	songs, err := w.findSongsInPage(url)
 	if err != nil {
 		song <- Song{
