@@ -46,11 +46,11 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 	similarTrack, similarTrackMatch := s.findSongInPlaylistCache(conf.Playlist, artistTitle)
 	if similarTrackMatch >= validMatch {
 		return &Status{
-			FoundTitle:   "<cached>",
+			FoundTitle:   similarTrack.String(),
 			MatchQuality: similarTrackMatch,
 			SongAdded:    false,
+			SongExists:   true,
 			Cached:       true,
-			SimilarTitle: similarTrack.String(),
 		}, nil
 	} else {
 		// If not in playlist cache, let's check in notFound cache:
@@ -63,8 +63,8 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 				FoundTitle:   track.String(),
 				MatchQuality: spotify.CalculateMatchRatio(artistTitle, track),
 				SongAdded:    false,
+				SongExists:   false,
 				Cached:       true,
-				SimilarTitle: "",
 			}, nil
 		}
 	}
@@ -107,8 +107,8 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 			FoundTitle:   newTrack.String(),
 			MatchQuality: newTrackMatch,
 			SongAdded:    true,
+			SongExists:   false,
 			Cached:       false,
-			SimilarTitle: "",
 		}, nil
 	} else {
 		// Add not found track to cache
@@ -120,8 +120,8 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 			FoundTitle:   newTrack.String(),
 			MatchQuality: newTrackMatch,
 			SongAdded:    false,
+			SongExists:   false,
 			Cached:       false,
-			SimilarTitle: "",
 		}, nil
 	}
 }

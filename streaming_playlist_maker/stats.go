@@ -11,8 +11,8 @@ type aggregatedStatus struct {
 	added          int64
 	notFoundCached int64
 	notFound       int64
-	foundCached    int64
-	found          int64
+	existsCached   int64
+	exists         int64
 	errors         int64
 }
 
@@ -58,14 +58,14 @@ func (s *statistics) NotFound(jobName string, artistTitle string, cached bool) {
 }
 
 // Song was found by the saver but it already exists
-func (s *statistics) Found(jobName string, artistTitle string, cached bool) {
+func (s *statistics) Exists(jobName string, artistTitle string, cached bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if cached {
-		s.m[jobName].foundCached++
+		s.m[jobName].existsCached++
 	} else {
-		s.m[jobName].found++
+		s.m[jobName].exists++
 	}
 
 }
@@ -84,11 +84,11 @@ func (s *statistics) Print() {
 	for k, v := range s.m {
 		notFoundTotal := v.notFound + v.notFoundCached
 		notFoundPercent := v.notFoundCached * 100 / max(notFoundTotal, 1)
-		foundTotal := v.found + v.foundCached
-		foundPercent := v.foundCached * 100 / max(foundTotal, 1)
-		total := v.added + notFoundTotal + foundTotal + v.errors
+		existsTotal := v.exists + v.existsCached
+		existsPercent := v.existsCached * 100 / max(existsTotal, 1)
+		total := v.added + notFoundTotal + existsTotal + v.errors
 
-		glog.Infof("[%15.15s] Stats: A %4d, N %5d (NC %3d%%), F %5d (FC %3d%%), E %3d, total: %5d.", k, v.added, notFoundTotal, notFoundPercent, foundTotal, foundPercent, v.errors, total)
+		glog.Infof("[%15.15s] Stats: A %4d, N %5d (NC %3d%%), E %5d (EC %3d%%), Error %3d, total: %5d.", k, v.added, notFoundTotal, notFoundPercent, existsTotal, existsPercent, v.errors, total)
 	}
 }
 

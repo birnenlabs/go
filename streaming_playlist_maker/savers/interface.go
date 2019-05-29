@@ -16,10 +16,10 @@ type Status struct {
 	Cached bool
 	// True if song was added.
 	SongAdded bool
-	// Name of the song found by the saver, empty if not found.
+	// True if song already existed in the playlsit
+	SongExists bool
+	// Title of the song found by the saver, empty if not found.
 	FoundTitle string
-	// Title of the same (or similar) song that is already added to given playlist, when empty assuming that FoundTitle was just added.
-	SimilarTitle string
 	// Match quality 0-100
 	MatchQuality int
 }
