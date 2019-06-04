@@ -93,6 +93,28 @@ func (s *statistics) String() string {
 	return buf.String()
 }
 
+func (s *statistics) FindIssues() string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	var buf bytes.Buffer
+	if len(s.m) == 0 {
+		buf.WriteString("Zero sources were tracked.")
+	}
+
+	for k, v := range s.m {
+		if v.added+v.exists+v.existsCached == 0 {
+			buf.WriteString(k)
+			buf.WriteString(": no songs were added or existed before.\n")
+		} else if v.errors*100/(v.added+v.exists+v.existsCached) > 30 {
+			buf.WriteString(k)
+			buf.WriteString(": more than 30% of errors.\n")
+		}
+	}
+	return buf.String()
+
+}
+
 func max(a int64, b int64) int64 {
 	if a > b {
 		return a
