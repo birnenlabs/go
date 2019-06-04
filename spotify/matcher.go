@@ -54,7 +54,7 @@ func CalculateMatchRatio(radio string, spotify SpotifyTrack) int {
 	spotifyString := strings.ToLower(spotify.String())
 	for _, terribleName := range terribleSongNames {
 		if strings.Contains(spotifyString, terribleName) {
-			glog.V(1).Infof("Terrible name: %v", spotify)
+			glog.V(3).Infof("Terrible name: %v", spotify)
 			return 0
 		}
 	}
@@ -80,20 +80,20 @@ func CalculateMatchRatio(radio string, spotify SpotifyTrack) int {
 		combinedMatch := calculateMatchRatioArray(
 			append(spotifyArtistArray, spotifyTitleArray...),
 			append(radioArtistArray, radioTitleArray...))
-		glog.V(1).Infof("Result less than 100, trying combined match %v.", combinedMatch)
+		glog.V(3).Infof("Result less than 100, trying combined match %v.", combinedMatch)
 		if combinedMatch == 100 {
 			// 99 so we would not override the proper artist/title match.
 			result = 99
 		}
 	}
-	glog.V(1).Infof("CalculateMatchRatio result: %v.", result)
+	glog.V(2).Infof("CalculateMatchRatio result: %v.", result)
 	return result
 }
 
 // Returns match ratio of string arrays.
 func calculateMatchRatioArray(radio []string, spotify []string) int {
 	if len(radio) == 0 || len(spotify) == 0 {
-		glog.V(1).Infof("radio: %v, spotify: %v, result: 0", radio, spotify)
+		glog.V(3).Infof("radio: %v, spotify: %v, result: 0", radio, spotify)
 		return 0
 	}
 
@@ -106,12 +106,12 @@ func calculateMatchRatioArray(radio []string, spotify []string) int {
 	result = result / len(radio)
 	// penalty for size difference
 	result = max(0, result-max(0, 5*(len(spotify)-len(radio))))
-	glog.V(1).Infof("radio: %v, spotify: %v, initial result: %v", radio, spotify, result)
+	glog.V(3).Infof("radio: %v, spotify: %v, initial result: %v", radio, spotify, result)
 
 	for _, penalty := range penaltyWords {
 		if !contains(penalty, radio) && contains(penalty, spotify) {
 			result = max(0, result-10)
-			glog.V(1).Infof("radio: %v, spotify: %v, penalty for: %q", radio, spotify, penalty)
+			glog.V(3).Infof("radio: %v, spotify: %v, penalty for: %q", radio, spotify, penalty)
 		}
 	}
 
@@ -119,10 +119,10 @@ func calculateMatchRatioArray(radio []string, spotify []string) int {
 	for _, award := range awardWords {
 		if !contains(award, radio) && contains(award, spotify) {
 			result = min(100, result+5)
-			glog.V(1).Infof("radio: %v, spotify: %v, award for: %q", radio, spotify, award)
+			glog.V(3).Infof("radio: %v, spotify: %v, award for: %q", radio, spotify, award)
 		}
 	}
-	glog.V(1).Infof("radio: %v, spotify: %v, result: %v", radio, spotify, result)
+	glog.V(3).Infof("radio: %v, spotify: %v, result: %v", radio, spotify, result)
 	return result
 }
 
