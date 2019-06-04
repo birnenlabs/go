@@ -1,9 +1,8 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/golang/glog"
-
 	"sync"
 )
 
@@ -77,10 +76,11 @@ func (s *statistics) Error(jobName string, artistTitle string, err error) {
 	s.m[jobName].errors++
 }
 
-func (s *statistics) Print() {
+func (s *statistics) String() string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
+	var buf bytes.Buffer
 	for k, v := range s.m {
 		notFoundTotal := v.notFound + v.notFoundCached
 		notFoundPercent := v.notFoundCached * 100 / max(notFoundTotal, 1)
@@ -88,8 +88,9 @@ func (s *statistics) Print() {
 		existsPercent := v.existsCached * 100 / max(existsTotal, 1)
 		total := v.added + notFoundTotal + existsTotal + v.errors
 
-		glog.Infof("[%15.15s] Stats: A %4d, N %5d (NC %3d%%), E %5d (EC %3d%%), Error %3d, total: %5d.", k, v.added, notFoundTotal, notFoundPercent, existsTotal, existsPercent, v.errors, total)
+		buf.WriteString(fmt.Sprintf("[%15.15s] A %4d, N %5d (NC %3d%%), E %5d (EC %3d%%), Error %3d, total: %5d.\n", k, v.added, notFoundTotal, notFoundPercent, existsTotal, existsPercent, v.errors, total))
 	}
+	return buf.String()
 }
 
 func max(a int64, b int64) int64 {
