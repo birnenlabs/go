@@ -62,6 +62,11 @@ var tests = []matchTest{
 		track: makeTrack("Taylor Swift", "Something else"),
 	},
 	matchTest{
+		want:  52, // award for radio edit
+		title: "Taylor Swift - Blank Space (Radio Edit)",
+		track: makeTrack("Taylor Swift", "Something else (Radio Edit)"),
+	},
+	matchTest{
 		want:  50,
 		title: "Queen - Blank Space",
 		track: makeTrack("Taylor Swift", "Blank Space"),

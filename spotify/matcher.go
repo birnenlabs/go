@@ -36,6 +36,14 @@ var awardWords = []string{
 	"single",
 }
 
+// This should contain the same things as "awardWords". These expressions will be removed from radio title to avoid matches:
+// "artist - song1 [radio edit]" == "artist - song2 [radio edit]"
+var awardExpressions = []string{
+	"radio edit",
+	"remastered",
+	"single edit",
+}
+
 var artistJoiners = []string{
 	"feat",
 	"vs",
@@ -64,6 +72,9 @@ func CalculateMatchRatio(radio string, spotify SpotifyTrack) int {
 
 	radioTitle := strings.ToLower(radioArtistTitle[1])
 	radioArtist := strings.ToLower(radioArtistTitle[0])
+	for _, awardExpression := range awardExpressions {
+		radioTitle = strings.Replace(radioTitle, awardExpression, "", -1)
+	}
 
 	radioArtistArray := wordMatcher.FindAllString(radioArtist, -1)
 	radioTitleArray := wordMatcher.FindAllString(radioTitle, -1)
