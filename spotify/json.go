@@ -18,12 +18,13 @@ type SpotifyAlbum struct {
 }
 
 type SpotifyTrack struct {
-	Id         string
-	Name       string
-	DurationMs int64 `json:"duration_ms"`
-	Popularity int
-	Artists    []SpotifyArtist
-	Album      SpotifyAlbum
+	Id               string
+	Name             string
+	DurationMs       int64 `json:"duration_ms"`
+	Popularity       int
+	Artists          []SpotifyArtist
+	Album            SpotifyAlbum
+	AvailableMarkets []string `json:"available_markets"`
 }
 
 type PlaylistItem struct {
