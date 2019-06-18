@@ -67,8 +67,8 @@ func CalculateMatchRatio(radio string, spotify *ImmutableSpotifyTrack) int {
 		}
 	}
 
-	spotifyTitle := strings.ToLower(spotify.title)
-	spotifyArtist := strings.ToLower(spotify.artist)
+	spotifyTitle := strings.ToLower(spotify.Title())
+	spotifyArtist := strings.ToLower(spotify.Artist())
 
 	radioTitle := strings.ToLower(radioArtistTitle[1])
 	radioArtist := strings.ToLower(radioArtistTitle[0])

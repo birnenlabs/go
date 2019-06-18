@@ -17,7 +17,7 @@ import (
 func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, track *ImmutableSpotifyTrack) error {
 	url := fmt.Sprintf(
 		"https://api.spotify.com/v1/playlists/%s/tracks?uris=spotify:track:%s",
-		playlistId, track.id)
+		playlistId, track.Id())
 
 	glog.V(1).Infof("Add to playlist url: %q.", url)
 	resp, err := s.httpClient.Post(url, "text/plain", bytes.NewReader(nil))

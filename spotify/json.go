@@ -46,9 +46,7 @@ type SearchResponse struct {
 }
 
 type ImmutableSpotifyTrack struct {
-	id     string
-	title  string
-	artist string
+	track  *SpotifyTrack
 }
 
 func (t SpotifyTrack) String() string {
@@ -70,27 +68,25 @@ func (t SpotifyTrack) ArtistAsString() string {
 
 func (t *SpotifyTrack) Immutable() *ImmutableSpotifyTrack {
 	return &ImmutableSpotifyTrack{
-		id:     t.Id,
-		title:  t.Name,
-		artist: t.ArtistAsString(),
+		track:  t,
 	}
 }
 
 func (t *ImmutableSpotifyTrack) Id() string {
-	return t.id
+	return t.track.Id
 }
 
 func (t *ImmutableSpotifyTrack) Title() string {
-	return t.title
+	return t.track.Name
 }
 
 func (t *ImmutableSpotifyTrack) Artist() string {
-	return t.artist
+	return t.track.ArtistAsString()
 }
 
 func (t *ImmutableSpotifyTrack) String() string {
-        if len(t.artist)+len(t.title) > 0 {
-                return t.artist + " - " + t.title
+        if len(t.Artist())+len(t.Title()) > 0 {
+                return t.Artist() + " - " + t.Title()
         } else {
                 return ""
         }
