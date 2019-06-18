@@ -14,10 +14,10 @@ import (
 	"github.com/golang/glog"
 )
 
-func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, trackId string) error {
+func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, track *ImmutableSpotifyTrack) error {
 	url := fmt.Sprintf(
 		"https://api.spotify.com/v1/playlists/%s/tracks?uris=spotify:track:%s",
-		playlistId, trackId)
+		playlistId, track.id)
 
 	glog.V(1).Infof("Add to playlist url: %q.", url)
 	resp, err := s.httpClient.Post(url, "text/plain", bytes.NewReader(nil))
@@ -33,8 +33,8 @@ func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, trackId 
 	return nil
 }
 
-func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]SpotifyTrack, error) {
-	result := make([]SpotifyTrack, 0)
+func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]*ImmutableSpotifyTrack, error) {
+	result := make([]*ImmutableSpotifyTrack, 0)
 
 	nextUrl := fmt.Sprintf(
 		"https://api.spotify.com/v1/playlists/%s/tracks",
@@ -62,14 +62,14 @@ func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]Spotif
 		}
 		nextUrl = r.Next
 		for _, playlistItem := range r.Items {
-			result = append(result, playlistItem.Track)
+			result = append(result, playlistItem.Track.Immutable())
 		}
 	}
 
 	return result, nil
 }
 
-func (s *Spotify) FindTracks(ctx context.Context, query string) ([]SpotifyTrack, error) {
+func (s *Spotify) FindTracks(ctx context.Context, query string) ([]*ImmutableSpotifyTrack, error) {
 	url := fmt.Sprintf(
 		"https://api.spotify.com/v1/search?type=track&market=%s&limit=50&q=%s",
 		s.market, url.QueryEscape(updateQueryString(query)))
@@ -96,8 +96,12 @@ func (s *Spotify) FindTracks(ctx context.Context, query string) ([]SpotifyTrack,
 		return nil, err
 	}
 
-	glog.V(1).Infof("Found %v tracks for query %q.", len(r.Tracks.Items), query)
-	return r.Tracks.Items, nil
+	result := make([]*ImmutableSpotifyTrack, 0)
+	for _, t := range r.Tracks.Items {
+		result = append(result, t.Immutable())
+	}
+	glog.V(1).Infof("Found %v tracks for query %q.", len(result), query)
+	return result, nil
 }
 
 func updateQueryString(query string) string {

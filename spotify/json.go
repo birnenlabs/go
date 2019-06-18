@@ -45,6 +45,12 @@ type SearchResponse struct {
 	Tracks SearchResponseBody
 }
 
+type ImmutableSpotifyTrack struct {
+	id     string
+	title  string
+	artist string
+}
+
 func (t SpotifyTrack) String() string {
 	artist := t.ArtistAsString()
 	if len(artist)+len(t.Name) > 0 {
@@ -61,3 +67,32 @@ func (t SpotifyTrack) ArtistAsString() string {
 	}
 	return strings.Join(artists, ", ")
 }
+
+func (t *SpotifyTrack) Immutable() *ImmutableSpotifyTrack {
+	return &ImmutableSpotifyTrack{
+		id:     t.Id,
+		title:  t.Name,
+		artist: t.ArtistAsString(),
+	}
+}
+
+func (t *ImmutableSpotifyTrack) Id() string {
+	return t.id
+}
+
+func (t *ImmutableSpotifyTrack) Title() string {
+	return t.title
+}
+
+func (t *ImmutableSpotifyTrack) Artist() string {
+	return t.artist
+}
+
+func (t *ImmutableSpotifyTrack) String() string {
+        if len(t.artist)+len(t.title) > 0 {
+                return t.artist + " - " + t.title
+        } else {
+                return ""
+        }
+}
+
