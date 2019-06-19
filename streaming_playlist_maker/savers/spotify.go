@@ -5,189 +5,141 @@ import (
 	"context"
 	"fmt"
 	"github.com/golang/glog"
-	"sync"
 )
 
 const validMatch = 75
 
+// TODO: this should be in config.
+const spotifyMarket = "PL"
+
 type spotifySaver struct {
 	spotify           *spotify.Spotify
-	playlistCache     map[string][]spotify.SpotifyTrack
-	notFoundCache     map[string]spotify.SpotifyTrack
-	playlistCacheLock sync.RWMutex
-	notFoundCacheLock sync.RWMutex
 }
 
-// TODO: market should be a parameter
 func newSpotify(ctx context.Context) (SongSaver, error) {
-	playlistCache := make(map[string][]spotify.SpotifyTrack)
-	notFoundCache := make(map[string]spotify.SpotifyTrack)
-	s, err := spotify.New(ctx, "pl")
+	s, err := spotify.New(ctx, spotifyMarket)
 	if err != nil {
 		return nil, err
 	}
 
 	return &spotifySaver{
 		spotify:       s,
-		playlistCache: playlistCache,
-		notFoundCache: notFoundCache,
 	}, nil
 }
 
-func (s *spotifySaver) Init(ctx context.Context, conf SaverJob) error {
-	glog.V(3).Infof("Initializing cache for playlist: %v", conf.Playlist)
-	return s.updateCache(ctx, conf.Playlist)
+func (s *spotifySaver) Clean(ctx context.Context, conf SaverJob) error {
+//	s.cleanPlaylist(ctx, conf.Playlist)
+	return nil
 }
 
 func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle string) (*Status, error) {
 	glog.V(3).Infof("Saving song: %v", artistTitle)
 
-	// First check if our song is already in cache
-	similarTrack, similarTrackMatch := s.findSongInPlaylistCache(conf.Playlist, artistTitle)
-	if similarTrackMatch >= validMatch {
-		return &Status{
-			FoundTitle:   similarTrack.String(),
-			MatchQuality: similarTrackMatch,
-			SongAdded:    false,
-			SongExists:   true,
-			Cached:       true,
-		}, nil
-	} else {
-		// If not in playlist cache, let's check in notFound cache:
-		s.notFoundCacheLock.RLock()
-		track, ok := s.notFoundCache[artistTitle]
-		s.notFoundCacheLock.RUnlock()
+        if len(artistTitle) == 0 {
+                return nil, fmt.Errorf("Empty song title")
+        }
 
-		if ok {
-			return &Status{
-				FoundTitle:   track.String(),
-				MatchQuality: spotify.CalculateMatchRatio(artistTitle, track),
-				SongAdded:    false,
-				SongExists:   false,
-				Cached:       true,
-			}, nil
-		}
+
+	// First check if the track is already in playlist
+        existingTracks, err := s.spotify.ListPlaylist(ctx, conf.Playlist)
+        if err != nil {
+                return nil, err
+        }
+
+	existingTrack, existingTrackMatch := s.findBestMatch(existingTracks, artistTitle)
+	if existingTrackMatch >= validMatch {
+		return &Status{
+                        FoundTitle:   existingTrack.String(),
+                        MatchQuality: existingTrackMatch,
+                        SongAdded:    false,
+                        SongExists:   true,
+                }, nil
 	}
 
-	// If not found in caches, let's try to search in spotify
-	newTrack, newTrackMatch, err := s.findSpotifyTrack(ctx, artistTitle)
+	// If not in the playlist search for it in spotify
+	newTracks, err := s.spotify.FindTracks(ctx, artistTitle)
 	if err != nil {
 		return nil, err
 	}
+	newTrack, newTrackMatch := s.findBestMatch(newTracks, artistTitle)
 
-	// if new track is good match add it to the playlist
+	// if new track is a good match add it to the playlist
 	if newTrackMatch >= validMatch {
-
-		// Temporarily removing cache check to speed up adding process.
-		//		// but update cache first and check if it is not there already
-		//		err := s.updateCache(ctx, conf.Playlist)
-		//		if err != nil {
-		//			return nil, err
-		//		}
-		//		similarTrack, similarTrackMatch = s.findSongInPlaylistCache(conf.Playlist, artistTitle)
-		//		if similarTrackMatch >= validMatch {
-		//			return &Status{
-		//				FoundTitle:   newTrack.String(),
-		//				MatchQuality: similarTrackMatch,
-		//				SongAdded:    false,
-		//				Cached:       false,
-		//				SimilarTitle: similarTrack.String(),
-		//			}, nil
-		//		}
-
-		err = s.spotify.AddToPlaylist(ctx, conf.Playlist, newTrack.Id)
+		err = s.spotify.AddToPlaylist(ctx, conf.Playlist, newTrack)
 		if err != nil {
 			return nil, err
 		}
-
-		// Also add to cache
-		s.addToCache(conf.Playlist, *newTrack)
 
 		return &Status{
 			FoundTitle:   newTrack.String(),
 			MatchQuality: newTrackMatch,
 			SongAdded:    true,
 			SongExists:   false,
-			Cached:       false,
-		}, nil
-	} else {
-		// Add not found track to cache
-		s.notFoundCacheLock.Lock()
-		s.notFoundCache[artistTitle] = *newTrack
-		s.notFoundCacheLock.Unlock()
-
-		return &Status{
-			FoundTitle:   newTrack.String(),
-			MatchQuality: newTrackMatch,
-			SongAdded:    false,
-			SongExists:   false,
-			Cached:       false,
 		}, nil
 	}
+
+	return &Status{
+		FoundTitle:   newTrack.String(),
+		MatchQuality: newTrackMatch,
+		SongAdded:    false,
+		SongExists:   false,
+	}, nil
 }
 
-func (s *spotifySaver) findSpotifyTrack(ctx context.Context, artistTitle string) (*spotify.SpotifyTrack, int, error) {
-	if len(artistTitle) == 0 {
-		return nil, 0, fmt.Errorf("Empty song title")
-	}
-
-	tracks, err := s.spotify.FindTracks(ctx, artistTitle)
-	if err != nil {
-		return nil, 0, err
-	}
-
+func (s *spotifySaver) findBestMatch(tracks []*spotify.ImmutableSpotifyTrack, artistTitle string) (*spotify.ImmutableSpotifyTrack, int) {
 	bestTrackMatch := -1
-	var bestTrack spotify.SpotifyTrack
-	for _, track := range tracks {
-		currentMatch := spotify.CalculateMatchRatio(artistTitle, track)
-		if currentMatch > bestTrackMatch {
-			bestTrackMatch = currentMatch
-			bestTrack = track
-		}
-		if bestTrackMatch == 100 {
-			break
+        var bestTrack *spotify.ImmutableSpotifyTrack
+        for _, track := range tracks {
+                currentMatch := spotify.CalculateMatchRatio(artistTitle, track)
+                if currentMatch > bestTrackMatch {
+                        bestTrackMatch = currentMatch
+                        bestTrack = track
+                }
+                if bestTrackMatch == 100 {
+                        break
+                }
+        }
+
+        return bestTrack, bestTrackMatch
+}
+
+func (s *spotifySaver) cleanPlaylist(ctx context.Context, playlistId string, tracks []*spotify.ImmutableSpotifyTrack) {
+
+	for _, t := range tracks {
+		if !isAvailable(t) {
+			artistTitle := t.String()
+			if len(artistTitle) == 0 {
+				glog.Infof("Something wrong with the song: %#v", t)
+//			} else {
+//				track, match, err := s.findSpotifyTrack(ctx, artistTitle)
+//				if err != nil {
+//					glog.Errorf("Could not find track %q: %v", artistTitle, err)
+//				} else {
+//					glog.Infof("Unavailable track: %3d %q -> %q", match, artistTitle, track)
+//					if match >= validMatch {
+//						//s.replaceInCache(playlistId, t, *track)
+//					}
+//				}
+			}
 		}
 	}
 
-	return &bestTrack, bestTrackMatch, nil
-}
-
-func (s *spotifySaver) findSongInPlaylistCache(playlistId string, artistTitle string) (*spotify.SpotifyTrack, int) {
-	s.playlistCacheLock.RLock()
-	defer s.playlistCacheLock.RUnlock()
-
-	bestTrackMatch := -1
-	var bestTrack spotify.SpotifyTrack
-	for _, track := range s.playlistCache[playlistId] {
-		currentMatch := spotify.CalculateMatchRatio(artistTitle, track)
-		if currentMatch > bestTrackMatch {
-			bestTrackMatch = currentMatch
-			bestTrack = track
+	for i, t1 := range tracks[0 : len(tracks)-1] {
+		for _, t2 := range tracks[i+1:] {
+			match12 := spotify.CalculateMatchRatio(t1.String(), t2)
+			match21 := spotify.CalculateMatchRatio(t2.String(), t1)
+			if match12 >= validMatch || match21 >= validMatch {
+				glog.Infof("%v %3d %3d %q==%q", playlistId, match12, match21, t1, t2)
+			}
 		}
-		if bestTrackMatch == 100 {
-			break
-		}
-
 	}
-	return &bestTrack, bestTrackMatch
 }
 
-func (s *spotifySaver) updateCache(ctx context.Context, playlistId string) error {
-	tracks, err := s.spotify.ListPlaylist(ctx, playlistId)
-	if err != nil {
-		return err
-	}
-
-	s.playlistCacheLock.Lock()
-	defer s.playlistCacheLock.Unlock()
-
-	s.playlistCache[playlistId] = tracks
-	return nil
-}
-
-func (s *spotifySaver) addToCache(playlistId string, track spotify.SpotifyTrack) {
-	s.playlistCacheLock.Lock()
-	defer s.playlistCacheLock.Unlock()
-
-	s.playlistCache[playlistId] = append(s.playlistCache[playlistId], track)
+func isAvailable(track *spotify.ImmutableSpotifyTrack) bool {
+//	for _, market := range track.AvailableMarkets {
+//		if market == spotifyMarket {
+//			return true
+//		}
+//	}
+	return false
 }
