@@ -11,10 +11,9 @@ func newStdout() (SongSaver, error) {
 	return &stdoutSaver{}, nil
 }
 
-func (s* stdoutSaver) Clean(ctx context.Context, conf SaverJob) error {
+func (s *stdoutSaver) Clean(ctx context.Context, conf SaverJob) error {
 	return nil
 }
-
 
 func (s *stdoutSaver) Save(ctx context.Context, conf SaverJob, artistTitle string) (*Status, error) {
 	time.Sleep(time.Millisecond * 100)

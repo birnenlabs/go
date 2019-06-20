@@ -13,7 +13,7 @@ const validMatch = 75
 const spotifyMarket = "PL"
 
 type spotifySaver struct {
-	spotify           *spotify.Spotify
+	spotify *spotify.Spotify
 }
 
 func newSpotify(ctx context.Context) (SongSaver, error) {
@@ -23,37 +23,36 @@ func newSpotify(ctx context.Context) (SongSaver, error) {
 	}
 
 	return &spotifySaver{
-		spotify:       s,
+		spotify: s,
 	}, nil
 }
 
 func (s *spotifySaver) Clean(ctx context.Context, conf SaverJob) error {
-//	s.cleanPlaylist(ctx, conf.Playlist)
+	//	s.cleanPlaylist(ctx, conf.Playlist)
 	return nil
 }
 
 func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle string) (*Status, error) {
 	glog.V(3).Infof("Saving song: %v", artistTitle)
 
-        if len(artistTitle) == 0 {
-                return nil, fmt.Errorf("Empty song title")
-        }
-
+	if len(artistTitle) == 0 {
+		return nil, fmt.Errorf("Empty song title")
+	}
 
 	// First check if the track is already in playlist
-        existingTracks, err := s.spotify.ListPlaylist(ctx, conf.Playlist)
-        if err != nil {
-                return nil, err
-        }
+	existingTracks, err := s.spotify.ListPlaylist(ctx, conf.Playlist)
+	if err != nil {
+		return nil, err
+	}
 
 	existingTrack, existingTrackMatch := s.findBestMatch(existingTracks, artistTitle)
 	if existingTrackMatch >= validMatch {
 		return &Status{
-                        FoundTitle:   existingTrack.String(),
-                        MatchQuality: existingTrackMatch,
-                        SongAdded:    false,
-                        SongExists:   true,
-                }, nil
+			FoundTitle:   existingTrack.String(),
+			MatchQuality: existingTrackMatch,
+			SongAdded:    false,
+			SongExists:   true,
+		}, nil
 	}
 
 	// If not in the playlist search for it in spotify
@@ -88,19 +87,19 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 
 func (s *spotifySaver) findBestMatch(tracks []*spotify.ImmutableSpotifyTrack, artistTitle string) (*spotify.ImmutableSpotifyTrack, int) {
 	bestTrackMatch := -1
-        var bestTrack *spotify.ImmutableSpotifyTrack
-        for _, track := range tracks {
-                currentMatch := spotify.CalculateMatchRatio(artistTitle, track)
-                if currentMatch > bestTrackMatch {
-                        bestTrackMatch = currentMatch
-                        bestTrack = track
-                }
-                if bestTrackMatch == 100 {
-                        break
-                }
-        }
+	var bestTrack *spotify.ImmutableSpotifyTrack
+	for _, track := range tracks {
+		currentMatch := spotify.CalculateMatchRatio(artistTitle, track)
+		if currentMatch > bestTrackMatch {
+			bestTrackMatch = currentMatch
+			bestTrack = track
+		}
+		if bestTrackMatch == 100 {
+			break
+		}
+	}
 
-        return bestTrack, bestTrackMatch
+	return bestTrack, bestTrackMatch
 }
 
 func (s *spotifySaver) cleanPlaylist(ctx context.Context, playlistId string, tracks []*spotify.ImmutableSpotifyTrack) {
@@ -110,16 +109,16 @@ func (s *spotifySaver) cleanPlaylist(ctx context.Context, playlistId string, tra
 			artistTitle := t.String()
 			if len(artistTitle) == 0 {
 				glog.Infof("Something wrong with the song: %#v", t)
-//			} else {
-//				track, match, err := s.findSpotifyTrack(ctx, artistTitle)
-//				if err != nil {
-//					glog.Errorf("Could not find track %q: %v", artistTitle, err)
-//				} else {
-//					glog.Infof("Unavailable track: %3d %q -> %q", match, artistTitle, track)
-//					if match >= validMatch {
-//						//s.replaceInCache(playlistId, t, *track)
-//					}
-//				}
+				//			} else {
+				//				track, match, err := s.findSpotifyTrack(ctx, artistTitle)
+				//				if err != nil {
+				//					glog.Errorf("Could not find track %q: %v", artistTitle, err)
+				//				} else {
+				//					glog.Infof("Unavailable track: %3d %q -> %q", match, artistTitle, track)
+				//					if match >= validMatch {
+				//						//s.replaceInCache(playlistId, t, *track)
+				//					}
+				//				}
 			}
 		}
 	}
@@ -136,10 +135,10 @@ func (s *spotifySaver) cleanPlaylist(ctx context.Context, playlistId string, tra
 }
 
 func isAvailable(track *spotify.ImmutableSpotifyTrack) bool {
-//	for _, market := range track.AvailableMarkets {
-//		if market == spotifyMarket {
-//			return true
-//		}
-//	}
+	//	for _, market := range track.AvailableMarkets {
+	//		if market == spotifyMarket {
+	//			return true
+	//		}
+	//	}
 	return false
 }
