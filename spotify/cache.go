@@ -1,7 +1,6 @@
 package spotify
 
 import (
-	"context"
 	"fmt"
 	"sync"
 )
@@ -25,7 +24,7 @@ type playlistCache struct {
 	tracksLock sync.RWMutex
 }
 
-func newCache(ctx context.Context) Cache {
+func newCache() Cache {
 	playlist := make(map[string]*playlistCache)
 	notFoundCache := make(map[string]*ImmutableSpotifyTrack)
 

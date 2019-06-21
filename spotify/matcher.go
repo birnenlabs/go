@@ -105,7 +105,7 @@ func calculateMatchRatio(radio string, spotify *ImmutableSpotifyTrack) int {
 			result = 99
 		}
 	}
-	glog.V(2).Infof("CalculateMatchRatio result: %v.", result)
+	glog.V(3).Infof("CalculateMatchRatio result: %v.", result)
 	return result
 }
 

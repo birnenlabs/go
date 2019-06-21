@@ -1,16 +1,13 @@
 package spotify
 
 import (
-	"context"
 	"testing"
 )
-
-var ctx = context.Background()
 
 const id = "id"
 
 func TestAdd(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	track := makeTrack("artist", "title")
 	checkNoError(t, n.Add(id, track.immutable()))
 
@@ -18,7 +15,7 @@ func TestAdd(t *testing.T) {
 }
 
 func TestAddAfterReplaceAll_nil(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	checkNoError(t, n.ReplaceAll(id, nil))
 
 	track := makeTrack("artist", "title")
@@ -27,7 +24,7 @@ func TestAddAfterReplaceAll_nil(t *testing.T) {
 }
 
 func TestAddAfterReplaceAll_nilSlice(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	checkNoError(t, n.ReplaceAll(id, []*ImmutableSpotifyTrack(nil)))
 
 	track := makeTrack("artist", "title")
@@ -36,7 +33,7 @@ func TestAddAfterReplaceAll_nilSlice(t *testing.T) {
 }
 
 func TestReplaceAllAfterAdd_nil(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	track := makeTrack("artist", "title")
 	n.Add(id, track.immutable())
 
@@ -46,7 +43,7 @@ func TestReplaceAllAfterAdd_nil(t *testing.T) {
 }
 
 func TestReplaceAllAfterAdd_nilSlice(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	track := makeTrack("artist", "title")
 	n.Add(id, track.immutable())
 
@@ -56,30 +53,30 @@ func TestReplaceAllAfterAdd_nilSlice(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	checkHasZeroSong(t, n)
 }
 
 func TestReplaceAll(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	checkNoError(t, n.ReplaceAll(id, []*ImmutableSpotifyTrack{}))
 	checkHasZeroSong(t, n)
 }
 
 func TestReplaceAll_nil(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	checkNoError(t, n.ReplaceAll(id, nil))
 	checkHasZeroSong(t, n)
 }
 
 func TestReplaceAll_nilSlice(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	checkNoError(t, n.ReplaceAll(id, []*ImmutableSpotifyTrack(nil)))
 	checkHasZeroSong(t, n)
 }
 
 func TestAddNil(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	err := n.Add(id, nil)
 	if err == nil {
 		t.Errorf("Expected error when adding nil")
@@ -87,7 +84,7 @@ func TestAddNil(t *testing.T) {
 }
 
 func TestReplaceWithNil(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	track := makeTrack("artist", "title")
 
 	err := n.Replace(id, track.immutable(), nil)
@@ -97,7 +94,7 @@ func TestReplaceWithNil(t *testing.T) {
 }
 
 func TestReplaceNilWith(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	track := makeTrack("artist", "title")
 
 	err := n.Replace(id, nil, track.immutable())
@@ -107,7 +104,7 @@ func TestReplaceNilWith(t *testing.T) {
 }
 
 func TestReplace(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	track1 := makeTrack("artist1", "title1")
 	track2 := makeTrack("artist2", "title2")
 	track1.Id = "abc"
@@ -120,7 +117,7 @@ func TestReplace(t *testing.T) {
 }
 
 func TestPointersAreSet(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	track := makeTrack("artist", "title")
 
 	checkNoError(t, n.Add(id, track.immutable()))
@@ -132,7 +129,7 @@ func TestPointersAreSet(t *testing.T) {
 }
 
 func TestPointersAreReturned(t *testing.T) {
-	n := newCache(ctx)
+	n := newCache()
 	track := makeTrack("artist", "title")
 
 	checkNoError(t, n.Add(id, track.immutable()))
@@ -141,6 +138,20 @@ func TestPointersAreReturned(t *testing.T) {
 	track2 := makeTrack("another", "different")
 	n.Get(id)[0] = track2.immutable()
 
+	// song in cache should not be modified
+	checkHasOneSong(t, n, "artist", "title")
+}
+
+func TestPointersAreCopied(t *testing.T) {
+	n := newCache()
+	track := makeTrack("artist", "title")
+
+	all := append([]*ImmutableSpotifyTrack{}, track.immutable())
+	checkNoError(t, n.ReplaceAll(id, all))
+	checkHasOneSong(t, n, "artist", "title")
+
+	newTrack := makeTrack("other", "other")
+	all[0] = newTrack.immutable()
 	// song in cache should not be modified
 	checkHasOneSong(t, n, "artist", "title")
 }

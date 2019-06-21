@@ -15,7 +15,8 @@ type Spotify struct {
 }
 
 type SpotifyCached struct {
-	cl *Spotify
+	cl    *Spotify
+	cache Cache
 }
 
 func NewNonCached(ctx context.Context, market string) (*Spotify, error) {
@@ -49,6 +50,7 @@ func New(ctx context.Context, market string) (*SpotifyCached, error) {
 		return nil, err
 	}
 	return &SpotifyCached{
-		cl: s,
+		cl:    s,
+		cache: newCache(),
 	}, nil
 }

@@ -66,6 +66,7 @@ func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]Spotif
 		}
 	}
 
+	glog.V(2).Infof("ListPlaylist: %v", result)
 	return result, nil
 }
 

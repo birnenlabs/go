@@ -1,9 +1,8 @@
 package spotify
 
-// Methods that are using spotify API. They are using rate limited client.
-
 import (
 	"context"
+	"github.com/golang/glog"
 )
 
 func (s *SpotifyCached) AddToPlaylist(ctx context.Context, playlistId string, track *ImmutableSpotifyTrack) error {
@@ -12,33 +11,46 @@ func (s *SpotifyCached) AddToPlaylist(ctx context.Context, playlistId string, tr
 		return err
 	}
 
-	// add to cache
-	return nil
+	return s.cache.Add(playlistId, track)
 }
 
 func (s *SpotifyCached) ListPlaylist(ctx context.Context, playlistId string) ([]*ImmutableSpotifyTrack, error) {
-	// check cache first
+	cachedTracks := s.cache.Get(playlistId)
+	if len(cachedTracks) > 0 {
+		glog.V(1).Infof("Found %d cached tracks for %v, not connecting to spotify.", len(cachedTracks), playlistId)
+		return cachedTracks, nil
+	}
+	glog.V(1).Infof("Found 0 cached tracks for %v, connecting to spotify.", playlistId)
+
 	tracks, err := s.cl.ListPlaylist(ctx, playlistId)
 	if err != nil {
 		return nil, err
 	}
 
 	result := make([]*ImmutableSpotifyTrack, 0)
-	for _, track := range tracks {
-		result = append(result, track.immutable())
+	for i := range tracks {
+		result = append(result, tracks[i].immutable())
 	}
+
+	err = s.cache.ReplaceAll(playlistId, result)
+	if err != nil {
+		return nil, err
+	}
+
+	glog.V(2).Infof("ListPlaylist cached: %v", result)
 	return result, nil
 }
 
 func (s *SpotifyCached) FindTracks(ctx context.Context, query string) ([]*ImmutableSpotifyTrack, error) {
+	// TODO add not found cache
 	tracks, err := s.cl.FindTracks(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
 	result := make([]*ImmutableSpotifyTrack, 0)
-	for _, track := range tracks {
-		result = append(result, track.immutable())
+	for i := range tracks {
+		result = append(result, tracks[i].immutable())
 	}
 	return result, nil
 }
