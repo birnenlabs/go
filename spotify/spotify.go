@@ -15,11 +15,10 @@ type Spotify struct {
 }
 
 type SpotifyCached struct {
-	Spotify
+	cl *Spotify
 }
 
-
-func New(ctx context.Context, market string) (*Spotify, error) {
+func NewNonCached(ctx context.Context, market string) (*Spotify, error) {
 	// First create OAuth.
 	oauthClient, err := oauth.Create("spotify")
 	if err != nil {
@@ -41,5 +40,15 @@ func New(ctx context.Context, market string) (*Spotify, error) {
 	return &Spotify{
 		httpClient: ratelimit.New(httpClient, time.Second),
 		market:     market,
+	}, nil
+}
+
+func New(ctx context.Context, market string) (*SpotifyCached, error) {
+	s, err := NewNonCached(ctx, market)
+	if err != nil {
+		return nil, err
+	}
+	return &SpotifyCached{
+		cl: s,
 	}, nil
 }

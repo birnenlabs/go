@@ -115,7 +115,7 @@ var tests = []matchTest{
 
 func TestMatchRatio(t *testing.T) {
 	for _, matchTest := range tests {
-		got := CalculateMatchRatio(matchTest.title, matchTest.track.immutable())
+		got := calculateMatchRatio(matchTest.title, matchTest.track.immutable())
 		if got != matchTest.want {
 			t.Errorf("radio: %q, spotify: %q, got: %v, want: %v", matchTest.title, matchTest.track, got, matchTest.want)
 		}
