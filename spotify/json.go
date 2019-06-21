@@ -66,7 +66,8 @@ func (t SpotifyTrack) ArtistAsString() string {
 	return strings.Join(artists, ", ")
 }
 
-func (t *SpotifyTrack) Immutable() *ImmutableSpotifyTrack {
+// Not public, so immutableTrack.track can only be assigned in package.
+func (t *SpotifyTrack) immutable() *ImmutableSpotifyTrack {
 	return &ImmutableSpotifyTrack{
 		track: t,
 	}

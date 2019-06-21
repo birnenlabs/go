@@ -14,6 +14,11 @@ type Spotify struct {
 	market string
 }
 
+type SpotifyCached struct {
+	Spotify
+}
+
+
 func New(ctx context.Context, market string) (*Spotify, error) {
 	// First create OAuth.
 	oauthClient, err := oauth.Create("spotify")
