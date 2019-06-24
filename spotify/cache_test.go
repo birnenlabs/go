@@ -101,48 +101,61 @@ func TestReplaceNilWith(t *testing.T) {
 	}
 }
 
-func TestReplaceWithNil_beginning(t *testing.T) {
-        n := newCache()
-        track1 := makeTrack("a1", "t1")
-        track2 := makeTrack("a2", "t2")
-        track3 := makeTrack("a3", "t3")
+func TestReplaceNonExisting(t *testing.T) {
+	n := newCache()
+	track1 := makeTrack("artist", "title")
+	track2 := makeTrack("artist2", "title2")
+	track3 := makeTrack("artist3", "title3")
 
-        checkNoError(t, n.Add(id, track1.immutable()))
-        checkNoError(t, n.Add(id, track2.immutable()))
+	checkNoError(t, n.Add(id, track1.immutable()))
+
+	err := n.Replace(id, track2.immutable(), track3.immutable())
+	if err == nil {
+		t.Errorf("Expected error when replacing non existing")
+	}
+}
+
+func TestReplaceWithNil_beginning(t *testing.T) {
+	n := newCache()
+	track1 := makeTrack("a1", "t1")
+	track2 := makeTrack("a2", "t2")
+	track3 := makeTrack("a3", "t3")
+
+	checkNoError(t, n.Add(id, track1.immutable()))
+	checkNoError(t, n.Add(id, track2.immutable()))
 	checkNoError(t, n.Add(id, track3.immutable()))
 	checkNoError(t, n.Replace(id, track1.immutable(), nil))
 
-        checkHasTwoSongs(t, n, "a2", "t2", "a3", "t3")
+	checkHasTwoSongs(t, n, "a2", "t2", "a3", "t3")
 }
 
 func TestReplaceWithNil_middle(t *testing.T) {
-        n := newCache()
-        track1 := makeTrack("a1", "t1")
-        track2 := makeTrack("a2", "t2")
-        track3 := makeTrack("a3", "t3")
+	n := newCache()
+	track1 := makeTrack("a1", "t1")
+	track2 := makeTrack("a2", "t2")
+	track3 := makeTrack("a3", "t3")
 
-        checkNoError(t, n.Add(id, track1.immutable()))
-        checkNoError(t, n.Add(id, track2.immutable()))
-        checkNoError(t, n.Add(id, track3.immutable()))
-        checkNoError(t, n.Replace(id, track2.immutable(), nil))
+	checkNoError(t, n.Add(id, track1.immutable()))
+	checkNoError(t, n.Add(id, track2.immutable()))
+	checkNoError(t, n.Add(id, track3.immutable()))
+	checkNoError(t, n.Replace(id, track2.immutable(), nil))
 
-        checkHasTwoSongs(t, n, "a1", "t1", "a3", "t3")
+	checkHasTwoSongs(t, n, "a1", "t1", "a3", "t3")
 }
 
 func TestReplaceWithNil_end(t *testing.T) {
-        n := newCache()
-        track1 := makeTrack("a1", "t1")
-        track2 := makeTrack("a2", "t2")
-        track3 := makeTrack("a3", "t3")
+	n := newCache()
+	track1 := makeTrack("a1", "t1")
+	track2 := makeTrack("a2", "t2")
+	track3 := makeTrack("a3", "t3")
 
-        checkNoError(t, n.Add(id, track1.immutable()))
-        checkNoError(t, n.Add(id, track2.immutable()))
-        checkNoError(t, n.Add(id, track3.immutable()))
-        checkNoError(t, n.Replace(id, track3.immutable(), nil))
+	checkNoError(t, n.Add(id, track1.immutable()))
+	checkNoError(t, n.Add(id, track2.immutable()))
+	checkNoError(t, n.Add(id, track3.immutable()))
+	checkNoError(t, n.Replace(id, track3.immutable(), nil))
 
-        checkHasTwoSongs(t, n, "a1", "t1", "a2", "t2")
+	checkHasTwoSongs(t, n, "a1", "t1", "a2", "t2")
 }
-
 
 func TestReplace(t *testing.T) {
 	n := newCache()

@@ -87,8 +87,8 @@ func (p *playlistCache) get() []*ImmutableSpotifyTrack {
 }
 
 func (p *playlistCache) size() int {
-        p.tracksLock.RLock()
-        defer p.tracksLock.RUnlock()
+	p.tracksLock.RLock()
+	defer p.tracksLock.RUnlock()
 
 	return len(p.tracks)
 }
