@@ -14,7 +14,7 @@ import (
 	"github.com/golang/glog"
 )
 
-func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, trackId string) error {
+func (s *connector) addToPlaylist(ctx context.Context, playlistId string, trackId string) error {
 	url := fmt.Sprintf(
 		"https://api.spotify.com/v1/playlists/%s/tracks?uris=spotify:track:%s",
 		playlistId, trackId)
@@ -33,7 +33,7 @@ func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, trackId 
 	return nil
 }
 
-func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]SpotifyTrack, error) {
+func (s *connector) listPlaylist(ctx context.Context, playlistId string) ([]SpotifyTrack, error) {
 	result := make([]SpotifyTrack, 0)
 
 	nextUrl := fmt.Sprintf(
@@ -70,7 +70,7 @@ func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]Spotif
 	return result, nil
 }
 
-func (s *Spotify) FindTracks(ctx context.Context, query string) ([]SpotifyTrack, error) {
+func (s *connector) findTracks(ctx context.Context, query string) ([]SpotifyTrack, error) {
 	url := fmt.Sprintf(
 		"https://api.spotify.com/v1/search?type=track&market=%s&limit=50&q=%s",
 		s.market, url.QueryEscape(updateQueryString(query)))

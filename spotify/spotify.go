@@ -7,19 +7,19 @@ import (
 	"time"
 )
 
-type Spotify struct {
+type connector struct {
 	// Client with 1 qps limit
 	httpClient ratelimit.AnyClient
 	// market to search songs (e.g. "pl")
 	market string
 }
 
-type SpotifyCached struct {
-	cl    *Spotify
-	cache Cache
+type Spotify struct {
+	connector *connector
+	cache     Cache
 }
 
-func NewNonCached(ctx context.Context, market string) (*Spotify, error) {
+func newConnector(ctx context.Context, market string) (*connector, error) {
 	// First create OAuth.
 	oauthClient, err := oauth.Create("spotify")
 	if err != nil {
@@ -38,19 +38,19 @@ func NewNonCached(ctx context.Context, market string) (*Spotify, error) {
 		return nil, err
 	}
 
-	return &Spotify{
+	return &connector{
 		httpClient: ratelimit.New(httpClient, time.Second),
 		market:     market,
 	}, nil
 }
 
-func New(ctx context.Context, market string) (*SpotifyCached, error) {
-	s, err := NewNonCached(ctx, market)
+func New(ctx context.Context, market string) (*Spotify, error) {
+	c, err := newConnector(ctx, market)
 	if err != nil {
 		return nil, err
 	}
-	return &SpotifyCached{
-		cl:    s,
-		cache: newCache(),
+	return &Spotify{
+		connector: c,
+		cache:     newCache(),
 	}, nil
 }

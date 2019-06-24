@@ -1,6 +1,7 @@
 package spotify
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -130,5 +131,6 @@ func makeTrack(artistsAndTitle ...string) SpotifyTrack {
 	return SpotifyTrack{
 		Name:    artistsAndTitle[len(artistsAndTitle)-1],
 		Artists: artists,
+		Id:      strings.Join(artistsAndTitle, ":"),
 	}
 }

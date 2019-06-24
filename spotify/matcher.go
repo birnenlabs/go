@@ -49,18 +49,10 @@ var artistJoiners = []string{
 	"vs",
 }
 
-func (s *SpotifyCached) CalculateMatchRatio(radio string, spotify *ImmutableSpotifyTrack) int {
-	return calculateMatchRatio(radio, spotify)
-}
-
-func (s *Spotify) CalculateMatchRatio(radio string, spotify *SpotifyTrack) int {
-	return calculateMatchRatio(radio, spotify.immutable())
-}
-
 // Calculates match ratio between song name stored in a string from radio (e.g. "Artist - Some song")
 // and a given SpotifyTrack. Returns match ratio from 0 to 100, anything below 75 is bad quality,
 // while 50 and less is probably worthless.
-func calculateMatchRatio(radio string, spotify *ImmutableSpotifyTrack) int {
+func CalculateMatchRatio(radio string, spotify *ImmutableSpotifyTrack) int {
 	radioArtistTitle := strings.SplitN(radio, " - ", 2)
 	if len(radioArtistTitle) != 2 {
 		glog.Warningf("Could not split artist+title: %q.", radio)

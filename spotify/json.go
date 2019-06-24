@@ -46,7 +46,9 @@ type SearchResponse struct {
 }
 
 type ImmutableSpotifyTrack struct {
-	track *SpotifyTrack
+	artist string
+	title  string
+	id     string
 }
 
 func (t SpotifyTrack) String() string {
@@ -66,23 +68,25 @@ func (t SpotifyTrack) ArtistAsString() string {
 	return strings.Join(artists, ", ")
 }
 
-// Not public, so immutableTrack.track can only be assigned in package.
+// Not public, so immutableTrack.track can only be created in package.
 func (t *SpotifyTrack) immutable() *ImmutableSpotifyTrack {
 	return &ImmutableSpotifyTrack{
-		track: t,
+		artist: t.ArtistAsString(),
+		title:  t.Name,
+		id:     t.Id,
 	}
 }
 
 func (t *ImmutableSpotifyTrack) Id() string {
-	return t.track.Id
+	return t.id
 }
 
 func (t *ImmutableSpotifyTrack) Title() string {
-	return t.track.Name
+	return t.title
 }
 
 func (t *ImmutableSpotifyTrack) Artist() string {
-	return t.track.ArtistAsString()
+	return t.artist
 }
 
 func (t *ImmutableSpotifyTrack) String() string {

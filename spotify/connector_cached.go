@@ -5,16 +5,27 @@ import (
 	"github.com/golang/glog"
 )
 
-func (s *SpotifyCached) AddToPlaylist(ctx context.Context, playlistId string, track *ImmutableSpotifyTrack) error {
-	err := s.cl.AddToPlaylist(ctx, playlistId, track.Id())
+func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, track *ImmutableSpotifyTrack) error {
+	// First try to add to cache
+	err := s.cache.Add(playlistId, track)
 	if err != nil {
 		return err
 	}
 
-	return s.cache.Add(playlistId, track)
+	err = s.connector.addToPlaylist(ctx, playlistId, track.Id())
+	if err != nil {
+		// Try to remove what was added to cache in case of error
+		err2 := s.cache.Replace(playlistId, track, nil)
+		if err2 != nil {
+			glog.Errorf("Error returned from cache when removing incorrectly added track: %v", err2)
+		}
+		return err
+	}
+
+	return nil
 }
 
-func (s *SpotifyCached) ListPlaylist(ctx context.Context, playlistId string) ([]*ImmutableSpotifyTrack, error) {
+func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]*ImmutableSpotifyTrack, error) {
 	cachedTracks := s.cache.Get(playlistId)
 	if len(cachedTracks) > 0 {
 		glog.V(1).Infof("Found %d cached tracks for %v, not connecting to spotify.", len(cachedTracks), playlistId)
@@ -22,35 +33,46 @@ func (s *SpotifyCached) ListPlaylist(ctx context.Context, playlistId string) ([]
 	}
 	glog.V(1).Infof("Found 0 cached tracks for %v, connecting to spotify.", playlistId)
 
-	tracks, err := s.cl.ListPlaylist(ctx, playlistId)
+	//Ingoring the error as the method updates cache
+	_, err := s.ListPlaylistNoCache(ctx, playlistId)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]*ImmutableSpotifyTrack, 0)
-	for i := range tracks {
-		result = append(result, tracks[i].immutable())
-	}
+	return s.cache.Get(playlistId), nil
+}
 
-	err = s.cache.ReplaceAll(playlistId, result)
+func (s *Spotify) ListPlaylistNoCache(ctx context.Context, playlistId string) ([]SpotifyTrack, error) {
+	result, err := s.connector.listPlaylist(ctx, playlistId)
 	if err != nil {
 		return nil, err
 	}
 
-	glog.V(2).Infof("ListPlaylist cached: %v", result)
+	// Add songs to cache
+	cached := make([]*ImmutableSpotifyTrack, len(result))
+	for i := range result {
+		cached[i] = result[i].immutable()
+	}
+
+	s.cache.ReplaceAll(playlistId, cached)
+	if err != nil {
+		return nil, err
+	}
+
+	glog.V(2).Infof("ListPlaylistNoCache cached: %v", result)
 	return result, nil
 }
 
-func (s *SpotifyCached) FindTracks(ctx context.Context, query string) ([]*ImmutableSpotifyTrack, error) {
+func (s *Spotify) FindTracks(ctx context.Context, query string) ([]*ImmutableSpotifyTrack, error) {
 	// TODO add not found cache
-	tracks, err := s.cl.FindTracks(ctx, query)
+	tracks, err := s.connector.findTracks(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]*ImmutableSpotifyTrack, 0)
+	result := make([]*ImmutableSpotifyTrack, len(tracks))
 	for i := range tracks {
-		result = append(result, tracks[i].immutable())
+		result[i] = tracks[i].immutable()
 	}
 	return result, nil
 }

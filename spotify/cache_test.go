@@ -116,19 +116,19 @@ func TestReplace(t *testing.T) {
 	checkHasOneSong(t, n, "artist2", "title2")
 }
 
-func TestPointersAreSet(t *testing.T) {
+func TestImmutableIsCopied(t *testing.T) {
 	n := newCache()
 	track := makeTrack("artist", "title")
 
 	checkNoError(t, n.Add(id, track.immutable()))
 	checkHasOneSong(t, n, "artist", "title")
 
-	// Modyfing underlying data results in cache changes
+	// Modyfing underlying data results in cache not changed
 	track.Name = "abc"
-	checkHasOneSong(t, n, "artist", "abc")
+	checkHasOneSong(t, n, "artist", "title")
 }
 
-func TestPointersAreReturned(t *testing.T) {
+func TestCannotModifyCacheArray(t *testing.T) {
 	n := newCache()
 	track := makeTrack("artist", "title")
 
@@ -142,7 +142,7 @@ func TestPointersAreReturned(t *testing.T) {
 	checkHasOneSong(t, n, "artist", "title")
 }
 
-func TestPointersAreCopied(t *testing.T) {
+func TestCannotModifyCacheArrayAfterReplaceAll(t *testing.T) {
 	n := newCache()
 	track := makeTrack("artist", "title")
 
@@ -154,6 +154,21 @@ func TestPointersAreCopied(t *testing.T) {
 	all[0] = newTrack.immutable()
 	// song in cache should not be modified
 	checkHasOneSong(t, n, "artist", "title")
+}
+
+func TestMoreSongs(t *testing.T) {
+	n := newCache()
+	track1 := makeTrack("a1", "t1")
+	track2 := makeTrack("a2", "t2")
+	track3 := makeTrack("a3", "t3")
+
+	checkNoError(t, n.Add(id, track1.immutable()))
+	checkNoError(t, n.Add(id, track2.immutable()))
+
+	checkHasTwoSongs(t, n, "a1", "t1", "a2", "t2")
+
+	checkNoError(t, n.Replace(id, track2.immutable(), track3.immutable()))
+	checkHasTwoSongs(t, n, "a1", "t1", "a3", "t3")
 }
 
 func checkNoError(t *testing.T, err error) {
@@ -173,5 +188,12 @@ func checkHasOneSong(t *testing.T, c Cache, artist string, title string) {
 	tracks := c.Get(id)
 	if len(tracks) != 1 || tracks[0].Title() != title || tracks[0].Artist() != artist {
 		t.Errorf("cache got: %v, want one song: %v - %v", tracks, artist, title)
+	}
+}
+
+func checkHasTwoSongs(t *testing.T, c Cache, artist1 string, title1 string, artist2 string, title2 string) {
+	tracks := c.Get(id)
+	if len(tracks) != 2 || tracks[0].Title() != title1 || tracks[0].Artist() != artist1 || tracks[1].Title() != title2 || tracks[1].Artist() != artist2 {
+		t.Errorf("cache got: %v, want: %v - %v, %v - %v", tracks, artist1, title1, artist2, title2)
 	}
 }
