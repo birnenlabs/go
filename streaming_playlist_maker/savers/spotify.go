@@ -33,7 +33,7 @@ func (s *spotifySaver) Clean(ctx context.Context, conf SaverJob) error {
 }
 
 func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle string) (*Status, error) {
-	glog.V(3).Infof("Saving song: %v", artistTitle)
+	glog.V(2).Infof("Saving song: %v", artistTitle)
 
 	if len(artistTitle) == 0 {
 		return nil, fmt.Errorf("Empty song title")
@@ -46,6 +46,7 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 	}
 
 	existingTrack, existingTrackMatch := s.findBestMatch(existingTracks, artistTitle)
+	glog.V(2).Infof("Best match from existing songs %q for %q (%d).", existingTrack, artistTitle, existingTrackMatch)
 	if existingTrackMatch >= validMatch {
 		return &Status{
 			FoundTitle:   existingTrack.String(),
