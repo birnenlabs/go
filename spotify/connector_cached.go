@@ -52,7 +52,7 @@ func (s *Spotify) ListPlaylistNoCache(ctx context.Context, playlistId string) ([
 	// Add songs to cache
 	cached := make([]*ImmutableSpotifyTrack, len(result))
 	for i := range result {
-		cached[i] = result[i].immutable()
+		cached[i] = result[i].Immutable()
 	}
 
 	s.cache.ReplaceAll(playlistId, cached)
@@ -73,7 +73,7 @@ func (s *Spotify) FindTracks(ctx context.Context, query string) ([]*ImmutableSpo
 
 	result := make([]*ImmutableSpotifyTrack, len(tracks))
 	for i := range tracks {
-		result[i] = tracks[i].immutable()
+		result[i] = tracks[i].Immutable()
 	}
 	return result, nil
 }
