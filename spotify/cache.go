@@ -10,6 +10,7 @@ type Cache interface {
 	ReplaceAll(playlistId string, tracks []*ImmutableSpotifyTrack) error
 	Replace(playlistId string, oldTrack *ImmutableSpotifyTrack, newTrack *ImmutableSpotifyTrack) error
 	Get(playlistId string) []*ImmutableSpotifyTrack
+	IsCached(playlistId string) bool
 }
 
 type spotifyCache struct {
@@ -64,6 +65,10 @@ func (s *spotifyCache) Replace(playlistId string, oldTrack *ImmutableSpotifyTrac
 	return s.getOrCreate(playlistId).replace(oldTrack, newTrack)
 }
 
+func (s *spotifyCache) IsCached(playlistId string) bool {
+	return s.getOrCreate(playlistId).size() > 0
+}
+
 func (p *playlistCache) add(track *ImmutableSpotifyTrack) error {
 	if track == nil {
 		return fmt.Errorf("Cannot add nil track")
@@ -81,6 +86,13 @@ func (p *playlistCache) get() []*ImmutableSpotifyTrack {
 	return append([]*ImmutableSpotifyTrack{}, p.tracks...)
 }
 
+func (p *playlistCache) size() int {
+        p.tracksLock.RLock()
+        defer p.tracksLock.RUnlock()
+
+	return len(p.tracks)
+}
+
 func (p *playlistCache) replaceAll(tracks []*ImmutableSpotifyTrack) error {
 	p.tracksLock.Lock()
 	defer p.tracksLock.Unlock()
@@ -89,7 +101,7 @@ func (p *playlistCache) replaceAll(tracks []*ImmutableSpotifyTrack) error {
 }
 
 func (p *playlistCache) replace(oldTrack *ImmutableSpotifyTrack, newTrack *ImmutableSpotifyTrack) error {
-	if oldTrack == nil || newTrack == nil {
+	if oldTrack == nil {
 		return fmt.Errorf("Cannot replace nil track")
 	}
 
@@ -98,7 +110,11 @@ func (p *playlistCache) replace(oldTrack *ImmutableSpotifyTrack, newTrack *Immut
 
 	for i, t := range p.tracks {
 		if t.Id() == oldTrack.Id() {
-			p.tracks[i] = newTrack
+			if newTrack == nil {
+				p.tracks = append(p.tracks[:i], p.tracks[i+1:]...)
+			} else {
+				p.tracks[i] = newTrack
+			}
 			return nil
 		}
 	}

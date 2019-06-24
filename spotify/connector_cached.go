@@ -6,13 +6,15 @@ import (
 )
 
 func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, track *ImmutableSpotifyTrack) error {
-	// First try to add to cache
-	err := s.cache.Add(playlistId, track)
-	if err != nil {
-		return err
+	// If playlist is cached add to its cache
+	if s.cache.IsCached(playlistId) {
+		err := s.cache.Add(playlistId, track)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = s.connector.addToPlaylist(ctx, playlistId, track.Id())
+	err := s.connector.addToPlaylist(ctx, playlistId, track.Id())
 	if err != nil {
 		// Try to remove what was added to cache in case of error
 		err2 := s.cache.Replace(playlistId, track, nil)
@@ -26,10 +28,9 @@ func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, track *I
 }
 
 func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]*ImmutableSpotifyTrack, error) {
-	cachedTracks := s.cache.Get(playlistId)
-	if len(cachedTracks) > 0 {
-		glog.V(1).Infof("Found %d cached tracks for %v, not connecting to spotify.", len(cachedTracks), playlistId)
-		return cachedTracks, nil
+	if s.cache.IsCached(playlistId) {
+		glog.V(1).Infof("Found cached tracks for %v, not connecting to spotify.", playlistId)
+		return s.cache.Get(playlistId), nil
 	}
 	glog.V(1).Infof("Found 0 cached tracks for %v, connecting to spotify.", playlistId)
 
