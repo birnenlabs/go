@@ -1,10 +1,7 @@
 package spotify
 
 import (
-	"birnenlabs.com/oauth"
-	"birnenlabs.com/ratelimit"
 	"context"
-	"time"
 	"github.com/golang/glog"
 )
 

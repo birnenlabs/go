@@ -3,47 +3,49 @@ package spotify
 // Methods that are using spotify API. They are using rate limited client.
 
 import (
+	"birnenlabs.com/oauth"
+	"birnenlabs.com/ratelimit"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/glog"
 	"io/ioutil"
 	"net/url"
 	"strings"
-
-	"github.com/golang/glog"
+	"time"
 )
 
 type connector struct {
-        // Client with 1 qps limit
-        httpClient ratelimit.AnyClient
-        // market to search songs (e.g. "pl")
-        market string
+	// Client with 1 qps limit
+	httpClient ratelimit.AnyClient
+	// market to search songs (e.g. "pl")
+	market string
 }
 
 func newConnector(ctx context.Context, market string) (*connector, error) {
-        // First create OAuth.
-        oauthClient, err := oauth.Create("spotify")
-        if err != nil {
-                return nil, err
-        }
+	// First create OAuth.
+	oauthClient, err := oauth.Create("spotify")
+	if err != nil {
+		return nil, err
+	}
 
-        // Verify the token
-        err = oauthClient.VerifyToken(ctx)
-        if err != nil {
-                return nil, err
-        }
+	// Verify the token
+	err = oauthClient.VerifyToken(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-        // Get http client with Bearer
-        httpClient, err := oauthClient.CreateAuthenticatedHttpClient(ctx)
-        if err != nil {
-                return nil, err
-        }
+	// Get http client with Bearer
+	httpClient, err := oauthClient.CreateAuthenticatedHttpClient(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-        return &connector{
-                httpClient: ratelimit.New(httpClient, time.Second),
-                market:     market,
-        }, nil
+	return &connector{
+		httpClient: ratelimit.New(httpClient, time.Second),
+		market:     market,
+	}, nil
 }
 
 func (s *connector) addToPlaylist(ctx context.Context, playlistId string, trackId string) error {
