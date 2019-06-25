@@ -39,10 +39,10 @@ func TestNotFound(t *testing.T) {
 		t.Errorf("TestNf: got: %v, want: 1", s.m["name"].notFound)
 	}
 
-        s.NotFound("name", "")
-        if s.m["name"].notFound != 2 {
-                t.Errorf("TestNf: got: %v, want: 2", s.m["name"].notFound)
-        }
+	s.NotFound("name", "")
+	if s.m["name"].notFound != 2 {
+		t.Errorf("TestNf: got: %v, want: 2", s.m["name"].notFound)
+	}
 }
 
 func TestExists(t *testing.T) {
@@ -53,10 +53,10 @@ func TestExists(t *testing.T) {
 		t.Errorf("TestEx: got: %v want: 1", s.m["name"].exists)
 	}
 
-        s.Exists("name", "")
-        if s.m["name"].exists != 2 {
-                t.Errorf("TestEx: got: %v want: 2", s.m["name"].exists)
-        }
+	s.Exists("name", "")
+	if s.m["name"].exists != 2 {
+		t.Errorf("TestEx: got: %v want: 2", s.m["name"].exists)
+	}
 }
 
 func TestError(t *testing.T) {
