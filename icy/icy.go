@@ -16,7 +16,12 @@ var (
 )
 
 // Opens icy stream and searches for the song title. Song and title will be pushed to the titleChannel.
-func Open(urlString string, titleChannel chan string) error {
+func Open(urlString string, titleChannel chan<- string) error {
+	return OpenWithTimeout(urlString, titleChannel, time.Hour*876000)
+}
+
+// Opens icy stream and searches for the song title. Song and title will be pushed to the titleChannel.
+func OpenWithTimeout(urlString string, titleChannel chan<- string, timeout time.Duration) error {
 	glog.V(1).Infof("Starting stream %q...", urlString)
 
 	client := &http.Client{}
@@ -34,6 +39,7 @@ func Open(urlString string, titleChannel chan string) error {
 	reader := bufio.NewReader(resp.Body)
 	lastTitle := ""
 	lastTitleTime := time.Now()
+	startTime := time.Now()
 
 	for err == nil {
 		var b []byte
@@ -48,6 +54,9 @@ func Open(urlString string, titleChannel chan string) error {
 		}
 		if lastTitleTime.Add(titleTimeout).Before(time.Now()) {
 			err = fmt.Errorf("title timeout, last title found: %v", lastTitleTime.Format("2006-01-02 15:04:05"))
+		}
+		if startTime.Add(timeout).Before(time.Now()) {
+			err = fmt.Errorf("job timeout, last title found: %v", lastTitleTime.Format("2006-01-02 15:04:05"))
 		}
 	}
 	return err
