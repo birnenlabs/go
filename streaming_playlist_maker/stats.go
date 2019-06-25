@@ -7,12 +7,10 @@ import (
 )
 
 type aggregatedStatus struct {
-	added          int64
-	notFoundCached int64
-	notFound       int64
-	existsCached   int64
-	exists         int64
-	errors         int64
+	added    int64
+	notFound int64
+	exists   int64
+	errors   int64
 }
 
 type statistics struct {
@@ -45,28 +43,19 @@ func (s *statistics) Added(jobName string, artistTitle string) {
 }
 
 // Song was not found by saver.
-func (s *statistics) NotFound(jobName string, artistTitle string, cached bool) {
+func (s *statistics) NotFound(jobName string, artistTitle string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if cached {
-		s.m[jobName].notFoundCached++
-	} else {
-		s.m[jobName].notFound++
-	}
+	s.m[jobName].notFound++
 }
 
 // Song was found by the saver but it already exists
-func (s *statistics) Exists(jobName string, artistTitle string, cached bool) {
+func (s *statistics) Exists(jobName string, artistTitle string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if cached {
-		s.m[jobName].existsCached++
-	} else {
-		s.m[jobName].exists++
-	}
-
+	s.m[jobName].exists++
 }
 
 func (s *statistics) Error(jobName string, artistTitle string, err error) {
@@ -82,13 +71,9 @@ func (s *statistics) String() string {
 
 	var buf bytes.Buffer
 	for k, v := range s.m {
-		notFoundTotal := v.notFound + v.notFoundCached
-		notFoundPercent := v.notFoundCached * 100 / max(notFoundTotal, 1)
-		existsTotal := v.exists + v.existsCached
-		existsPercent := v.existsCached * 100 / max(existsTotal, 1)
-		total := v.added + notFoundTotal + existsTotal + v.errors
+		total := v.added + v.notFound + v.exists + v.errors
 
-		buf.WriteString(fmt.Sprintf("[%15.15s] A %4d, N %5d (NC %3d%%), E %5d (EC %3d%%), Error %3d, total: %5d.\n", k, v.added, notFoundTotal, notFoundPercent, existsTotal, existsPercent, v.errors, total))
+		buf.WriteString(fmt.Sprintf("[%15.15s] A %4d, N %5d, E %5d, Err %3d, total: %5d.\n", k, v.added, v.notFound, v.exists, v.errors, total))
 	}
 	return buf.String()
 }
@@ -103,10 +88,10 @@ func (s *statistics) FindIssues() string {
 	}
 
 	for k, v := range s.m {
-		if v.added+v.exists+v.existsCached == 0 {
+		if v.added+v.exists == 0 {
 			buf.WriteString(k)
 			buf.WriteString(": no songs were added or existed before.\n")
-		} else if v.errors*100/(v.added+v.exists+v.existsCached) > 30 {
+		} else if v.errors*100/(v.added+v.exists) > 30 {
 			buf.WriteString(k)
 			buf.WriteString(": more than 30% of errors.\n")
 		}

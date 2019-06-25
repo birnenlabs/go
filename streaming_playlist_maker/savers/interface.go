@@ -12,8 +12,6 @@ type SaverJob struct {
 }
 
 type Status struct {
-	// True if no server requests were done.
-	Cached bool
 	// True if song was added.
 	SongAdded bool
 	// True if song already existed in the playlsit
