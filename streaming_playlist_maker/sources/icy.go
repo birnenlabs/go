@@ -1,11 +1,11 @@
 package sources
 
 import (
-	"context"
-	"strings"
-
 	"birnenlabs.com/icy"
+	"context"
 	"github.com/golang/glog"
+	"strings"
+	"time"
 )
 
 type icySource struct {
@@ -14,6 +14,8 @@ type icySource struct {
 func newIcy() SongSource {
 	return &icySource{}
 }
+
+const timeout = time.Hour * 12
 
 func (s *icySource) Start(ctx context.Context, conf SourceJob, song chan<- Song) error {
 	// channel accepted by the icy listener
@@ -28,7 +30,7 @@ func (s *icySource) Start(ctx context.Context, conf SourceJob, song chan<- Song)
 
 func (s *icySource) startStreaming(title chan string, song chan<- Song, conf SourceJob) {
 	defer close(title)
-	err := icy.Open(conf.SourceUrl, title)
+	err := icy.OpenWithTimeout(conf.SourceUrl, title, timeout)
 	glog.V(1).Infof("%v", err)
 
 	song <- Song{
