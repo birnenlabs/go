@@ -14,6 +14,38 @@ import (
 	"github.com/golang/glog"
 )
 
+type connector struct {
+        // Client with 1 qps limit
+        httpClient ratelimit.AnyClient
+        // market to search songs (e.g. "pl")
+        market string
+}
+
+func newConnector(ctx context.Context, market string) (*connector, error) {
+        // First create OAuth.
+        oauthClient, err := oauth.Create("spotify")
+        if err != nil {
+                return nil, err
+        }
+
+        // Verify the token
+        err = oauthClient.VerifyToken(ctx)
+        if err != nil {
+                return nil, err
+        }
+
+        // Get http client with Bearer
+        httpClient, err := oauthClient.CreateAuthenticatedHttpClient(ctx)
+        if err != nil {
+                return nil, err
+        }
+
+        return &connector{
+                httpClient: ratelimit.New(httpClient, time.Second),
+                market:     market,
+        }, nil
+}
+
 func (s *connector) addToPlaylist(ctx context.Context, playlistId string, trackId string) error {
 	url := fmt.Sprintf(
 		"https://api.spotify.com/v1/playlists/%s/tracks?uris=spotify:track:%s",
