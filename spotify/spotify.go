@@ -81,7 +81,6 @@ func (s *Spotify) ListPlaylistNoCache(ctx context.Context, playlistId string) ([
 }
 
 func (s *Spotify) FindTracks(ctx context.Context, query string) ([]*ImmutableSpotifyTrack, error) {
-	// TODO add not found cache
 	tracks, err := s.connector.findTracks(ctx, query)
 	if err != nil {
 		return nil, err

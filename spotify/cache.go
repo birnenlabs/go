@@ -6,6 +6,7 @@ import (
 )
 
 type Cache interface {
+	// Playlist cache methods
 	Add(playlistId string, track *ImmutableSpotifyTrack) error
 	ReplaceAll(playlistId string, tracks []*ImmutableSpotifyTrack) error
 	Replace(playlistId string, oldTrack *ImmutableSpotifyTrack, newTrack *ImmutableSpotifyTrack) error
@@ -14,10 +15,8 @@ type Cache interface {
 }
 
 type spotifyCache struct {
-	playlist          map[string]*playlistCache
-	notFoundCache     map[string]*ImmutableSpotifyTrack
-	playlistLock      sync.RWMutex
-	notFoundCacheLock sync.RWMutex
+	playlist     map[string]*playlistCache
+	playlistLock sync.RWMutex
 }
 
 type playlistCache struct {
@@ -27,11 +26,9 @@ type playlistCache struct {
 
 func newCache() Cache {
 	playlist := make(map[string]*playlistCache)
-	notFoundCache := make(map[string]*ImmutableSpotifyTrack)
 
 	return &spotifyCache{
-		playlist:      playlist,
-		notFoundCache: notFoundCache,
+		playlist: playlist,
 	}
 }
 
