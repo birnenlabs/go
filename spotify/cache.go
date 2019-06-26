@@ -9,7 +9,7 @@ type Cache interface {
 	// Playlist cache methods
 	Add(playlistId string, track *ImmutableSpotifyTrack) error
 	ReplaceAll(playlistId string, tracks []*ImmutableSpotifyTrack) error
-	Replace(playlistId string, oldTrack *ImmutableSpotifyTrack, newTrack *ImmutableSpotifyTrack) error
+	Remove(playlistId string, track *ImmutableSpotifyTrack) error
 	Get(playlistId string) []*ImmutableSpotifyTrack
 	IsCached(playlistId string) bool
 }
@@ -58,8 +58,8 @@ func (s *spotifyCache) ReplaceAll(playlistId string, tracks []*ImmutableSpotifyT
 	return s.getOrCreate(playlistId).replaceAll(tracks)
 }
 
-func (s *spotifyCache) Replace(playlistId string, oldTrack *ImmutableSpotifyTrack, newTrack *ImmutableSpotifyTrack) error {
-	return s.getOrCreate(playlistId).replace(oldTrack, newTrack)
+func (s *spotifyCache) Remove(playlistId string, track *ImmutableSpotifyTrack) error {
+	return s.getOrCreate(playlistId).remove(track)
 }
 
 func (s *spotifyCache) IsCached(playlistId string) bool {
@@ -97,23 +97,27 @@ func (p *playlistCache) replaceAll(tracks []*ImmutableSpotifyTrack) error {
 	return nil
 }
 
-func (p *playlistCache) replace(oldTrack *ImmutableSpotifyTrack, newTrack *ImmutableSpotifyTrack) error {
-	if oldTrack == nil {
-		return fmt.Errorf("Cannot replace nil track")
+func (p *playlistCache) remove(track *ImmutableSpotifyTrack) error {
+	if track == nil {
+		return fmt.Errorf("Cannot remove nil track")
 	}
 
 	p.tracksLock.Lock()
 	defer p.tracksLock.Unlock()
 
-	for i, t := range p.tracks {
-		if t.Id() == oldTrack.Id() {
-			if newTrack == nil {
-				p.tracks = append(p.tracks[:i], p.tracks[i+1:]...)
-			} else {
-				p.tracks[i] = newTrack
-			}
-			return nil
+	i := 0
+	for _, t := range p.tracks {
+		// if ids are different in place copy to the new array
+		if t.Id() != track.Id() {
+			p.tracks[i] = t
+			i++
 		}
 	}
-	return fmt.Errorf("Track %q to replace was not found", oldTrack)
+	// if the length did not change noting was discarded
+	if len(p.tracks) == i {
+		return fmt.Errorf("Track %q to remove was not found", track)
+	}
+
+	p.tracks = p.tracks[:i]
+	return nil
 }
