@@ -22,7 +22,7 @@ func New(ctx context.Context, market string) (*Spotify, error) {
 }
 
 func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, track *ImmutableSpotifyTrack) error {
-	// If playlist is cached add to its cache
+	// Add to cache only if playlist is already cached (this is to avoid creating cache before list)
 	if s.cache.IsCached(playlistId) {
 		err := s.cache.Add(playlistId, track)
 		if err != nil {
@@ -33,9 +33,28 @@ func (s *Spotify) AddToPlaylist(ctx context.Context, playlistId string, track *I
 	err := s.connector.addToPlaylist(ctx, playlistId, track.Id())
 	if err != nil {
 		// Try to remove what was added to cache in case of error
-		err2 := s.cache.Replace(playlistId, track, nil)
+		err2 := s.cache.Remove(playlistId, track)
 		if err2 != nil {
 			glog.Errorf("Error returned from cache when removing incorrectly added track: %v", err2)
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (s *Spotify) RemoveFromPlaylist(ctx context.Context, playlistId string, track *ImmutableSpotifyTrack) error {
+	err := s.cache.Remove(playlistId, track)
+	if err != nil {
+		return err
+	}
+
+	err = s.connector.removeFromPlaylist(ctx, playlistId, track.Id())
+	if err != nil {
+		// Try to add what was removed to cache in case of error
+		err2 := s.cache.Add(playlistId, track)
+		if err2 != nil {
+			glog.Errorf("Error returned from cache when adding incorrectly removed track: %v", err2)
 		}
 		return err
 	}

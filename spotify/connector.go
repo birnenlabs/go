@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -62,6 +63,29 @@ func (s *connector) addToPlaylist(ctx context.Context, playlistId string, trackI
 
 	// 201 == created
 	if resp.StatusCode != 201 {
+		return fmt.Errorf("response code: %v", resp.StatusCode)
+	}
+	return nil
+}
+
+func (s *connector) removeFromPlaylist(ctx context.Context, playlistId string, trackId string) error {
+	url := fmt.Sprintf(
+		"https://api.spotify.com/v1/playlists/%s/tracks?uris=spotify:track:%s",
+		playlistId, trackId)
+
+	body := fmt.Sprintf("{\"tracks\":[{\"uri\":\"spotify:track:%v\"}]}", trackId)
+
+	glog.V(1).Infof("Remove from playlist url: %q.", url)
+
+	r, err := http.NewRequest(http.MethodDelete, url, strings.NewReader(body))
+
+	resp, err := s.httpClient.Do(r)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
 		return fmt.Errorf("response code: %v", resp.StatusCode)
 	}
 	return nil
