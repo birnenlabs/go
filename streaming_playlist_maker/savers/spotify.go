@@ -13,7 +13,8 @@ const validMatch = 75
 const spotifyMarket = "PL"
 
 type spotifySaver struct {
-	spotify *spotify.Spotify
+	spotify  *spotify.Spotify
+	notFound *nfCache
 }
 
 func newSpotify(ctx context.Context) (SongSaver, error) {
@@ -23,7 +24,8 @@ func newSpotify(ctx context.Context) (SongSaver, error) {
 	}
 
 	return &spotifySaver{
-		spotify: s,
+		spotify:  s,
+		notFound: newCache(),
 	}, nil
 }
 
@@ -41,7 +43,13 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 		return nil, fmt.Errorf("Empty song title")
 	}
 
-	// First check if the track is already in playlist
+	// First check if the track is in not found cache
+	cachedStatus := s.notFound.IsNotFound(artistTitle)
+	if cachedStatus != nil {
+		return cachedStatus, nil
+	}
+
+	// Then check if the track is already in playlist
 	existingTracks, err := s.spotify.ListPlaylist(ctx, conf.Playlist)
 	if err != nil {
 		return nil, err
@@ -80,12 +88,16 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 		}, nil
 	}
 
-	return &Status{
-		FoundTitle:   newTrack.String(),
-		MatchQuality: newTrackMatch,
-		SongAdded:    false,
-		SongExists:   false,
-	}, nil
+	// If there was no match add it to cache
+	status :=
+		&Status{
+			FoundTitle:   newTrack.String(),
+			MatchQuality: newTrackMatch,
+			SongAdded:    false,
+			SongExists:   false,
+		}
+	s.notFound.AddNotFound(artistTitle, status)
+	return status, nil
 }
 
 func (s *spotifySaver) findBestMatch(tracks []*spotify.ImmutableSpotifyTrack, artistTitle string) (*spotify.ImmutableSpotifyTrack, int) {
@@ -114,6 +126,7 @@ func (s *spotifySaver) replaceUnplayable(ctx context.Context, playlistId string)
 	for _, t := range tracks {
 		if !isAvailable(&t) {
 			artistTitle := t.String()
+
 			if len(artistTitle) == 0 {
 				glog.Infof("Something wrong with the song: %#v", t)
 			} else {
