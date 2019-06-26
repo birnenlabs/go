@@ -135,7 +135,7 @@ func (s *spotifySaver) replaceUnplayable(ctx context.Context, playlistId string)
 			artistTitle := t.String()
 			if len(artistTitle) == 0 {
 				// If artist - titile is empty song is removed.
-				glog.Infof("Something wrong with the song: %#v", t)
+				glog.Infof("[%v] Removing invalid song: %#v", playlistId, t)
 				err = s.spotify.RemoveFromPlaylist(ctx, playlistId, t.Immutable())
 				if err != nil {
 					return fmt.Errorf("error while removing: %q when removing wrong song %#v", err, t)
@@ -146,9 +146,10 @@ func (s *spotifySaver) replaceUnplayable(ctx context.Context, playlistId string)
 				if err != nil {
 					return err
 				}
+
 				newTrack, newTrackMatch := s.findBestMatch(newTracks, artistTitle)
-				glog.Infof("[%v] Unavailable track: %3d %q -> %q", playlistId, newTrackMatch, artistTitle, newTrack)
 				if newTrackMatch >= validMatch {
+					glog.Infof("[%v] Replacing track:  %3d %q -> %q", playlistId, newTrackMatch, artistTitle, newTrack)
 					// We have a good match
 					// first remove old song
 					err = s.spotify.RemoveFromPlaylist(ctx, playlistId, t.Immutable())
@@ -161,6 +162,8 @@ func (s *spotifySaver) replaceUnplayable(ctx context.Context, playlistId string)
 					if err != nil {
 						return fmt.Errorf("error while ADDING: %q during the process of replacing %q with %q - song was removed but new song was not added", err, artistTitle, newTrack)
 					}
+				} else {
+					glog.Infof("[%v] Unavailable track: %3d %q -> %q", playlistId, newTrackMatch, artistTitle, newTrack)
 				}
 			}
 		}
