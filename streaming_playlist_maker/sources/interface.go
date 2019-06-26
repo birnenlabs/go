@@ -27,6 +27,8 @@ type SongSource interface {
 func Create(ctx context.Context, sourceType string) (SongSource, error) {
 	glog.V(3).Infof("Creating %v source", sourceType)
 	switch sourceType {
+	case "null":
+		return newNull(), nil
 	case "icy":
 		return newIcy(), nil
 	case "odsluchane":

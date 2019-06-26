@@ -15,7 +15,7 @@ func newIcy() SongSource {
 	return &icySource{}
 }
 
-const timeout = time.Hour * 12
+const timeout = time.Hour * 6
 
 func (s *icySource) Start(ctx context.Context, conf SourceJob, song chan<- Song) error {
 	// channel accepted by the icy listener
