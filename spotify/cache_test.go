@@ -9,7 +9,7 @@ const id = "id"
 func TestAdd(t *testing.T) {
 	n := newCache()
 	track := makeTrack("artist", "title")
-	checkNoError(t, n.Add(id, track.Immutable()))
+	checkNoError(t, n.Add(id, track.immutable()))
 
 	checkHasOneSong(t, n, "artist", "title")
 }
@@ -19,7 +19,7 @@ func TestAddAfterReplaceAll_nil(t *testing.T) {
 	checkNoError(t, n.ReplaceAll(id, nil))
 
 	track := makeTrack("artist", "title")
-	n.Add(id, track.Immutable())
+	n.Add(id, track.immutable())
 	checkHasOneSong(t, n, "artist", "title")
 }
 
@@ -28,14 +28,14 @@ func TestAddAfterReplaceAll_nilSlice(t *testing.T) {
 	checkNoError(t, n.ReplaceAll(id, []*ImmutableSpotifyTrack(nil)))
 
 	track := makeTrack("artist", "title")
-	n.Add(id, track.Immutable())
+	n.Add(id, track.immutable())
 	checkHasOneSong(t, n, "artist", "title")
 }
 
 func TestReplaceAllAfterAdd_nil(t *testing.T) {
 	n := newCache()
 	track := makeTrack("artist", "title")
-	n.Add(id, track.Immutable())
+	n.Add(id, track.immutable())
 
 	checkHasOneSong(t, n, "artist", "title")
 	checkNoError(t, n.ReplaceAll(id, nil))
@@ -45,7 +45,7 @@ func TestReplaceAllAfterAdd_nil(t *testing.T) {
 func TestReplaceAllAfterAdd_nilSlice(t *testing.T) {
 	n := newCache()
 	track := makeTrack("artist", "title")
-	n.Add(id, track.Immutable())
+	n.Add(id, track.immutable())
 
 	checkHasOneSong(t, n, "artist", "title")
 	checkNoError(t, n.ReplaceAll(id, []*ImmutableSpotifyTrack(nil)))
@@ -87,10 +87,10 @@ func TestRemove(t *testing.T) {
 	n := newCache()
 	track := makeTrack("artist", "title")
 
-	checkNoError(t, n.Add(id, track.Immutable()))
+	checkNoError(t, n.Add(id, track.immutable()))
 	checkHasOneSong(t, n, "artist", "title")
 
-	checkNoError(t, n.Remove(id, track.Immutable()))
+	checkNoError(t, n.Remove(id, track.immutable()))
 	checkHasZeroSong(t, n)
 }
 
@@ -108,9 +108,9 @@ func TestRemoveNonExisting(t *testing.T) {
 	track1 := makeTrack("artist", "title")
 	track2 := makeTrack("artist2", "title2")
 
-	checkNoError(t, n.Add(id, track1.Immutable()))
+	checkNoError(t, n.Add(id, track1.immutable()))
 
-	err := n.Remove(id, track2.Immutable())
+	err := n.Remove(id, track2.immutable())
 	if err == nil {
 		t.Errorf("Expected error when replacing non existing")
 	}
@@ -122,10 +122,10 @@ func TestRemove_beginning(t *testing.T) {
 	track2 := makeTrack("a2", "t2")
 	track3 := makeTrack("a3", "t3")
 
-	checkNoError(t, n.Add(id, track1.Immutable()))
-	checkNoError(t, n.Add(id, track2.Immutable()))
-	checkNoError(t, n.Add(id, track3.Immutable()))
-	checkNoError(t, n.Remove(id, track1.Immutable()))
+	checkNoError(t, n.Add(id, track1.immutable()))
+	checkNoError(t, n.Add(id, track2.immutable()))
+	checkNoError(t, n.Add(id, track3.immutable()))
+	checkNoError(t, n.Remove(id, track1.immutable()))
 
 	checkHasTwoSongs(t, n, "a2", "t2", "a3", "t3")
 }
@@ -136,10 +136,10 @@ func TestRemove_middle(t *testing.T) {
 	track2 := makeTrack("a2", "t2")
 	track3 := makeTrack("a3", "t3")
 
-	checkNoError(t, n.Add(id, track1.Immutable()))
-	checkNoError(t, n.Add(id, track2.Immutable()))
-	checkNoError(t, n.Add(id, track3.Immutable()))
-	checkNoError(t, n.Remove(id, track2.Immutable()))
+	checkNoError(t, n.Add(id, track1.immutable()))
+	checkNoError(t, n.Add(id, track2.immutable()))
+	checkNoError(t, n.Add(id, track3.immutable()))
+	checkNoError(t, n.Remove(id, track2.immutable()))
 
 	checkHasTwoSongs(t, n, "a1", "t1", "a3", "t3")
 }
@@ -150,10 +150,10 @@ func TestRemove_end(t *testing.T) {
 	track2 := makeTrack("a2", "t2")
 	track3 := makeTrack("a3", "t3")
 
-	checkNoError(t, n.Add(id, track1.Immutable()))
-	checkNoError(t, n.Add(id, track2.Immutable()))
-	checkNoError(t, n.Add(id, track3.Immutable()))
-	checkNoError(t, n.Remove(id, track3.Immutable()))
+	checkNoError(t, n.Add(id, track1.immutable()))
+	checkNoError(t, n.Add(id, track2.immutable()))
+	checkNoError(t, n.Add(id, track3.immutable()))
+	checkNoError(t, n.Remove(id, track3.immutable()))
 
 	checkHasTwoSongs(t, n, "a1", "t1", "a2", "t2")
 }
@@ -162,11 +162,11 @@ func TestRemoveAllDuplicates(t *testing.T) {
 	n := newCache()
 	track := makeTrack("a", "t")
 
-	checkNoError(t, n.Add(id, track.Immutable()))
-	checkNoError(t, n.Add(id, track.Immutable()))
+	checkNoError(t, n.Add(id, track.immutable()))
+	checkNoError(t, n.Add(id, track.immutable()))
 	checkHasTwoSongs(t, n, "a", "t", "a", "t")
 
-	n.Remove(id, track.Immutable())
+	n.Remove(id, track.immutable())
 	checkHasZeroSong(t, n)
 }
 
@@ -174,7 +174,7 @@ func TestImmutableIsCopied(t *testing.T) {
 	n := newCache()
 	track := makeTrack("artist", "title")
 
-	checkNoError(t, n.Add(id, track.Immutable()))
+	checkNoError(t, n.Add(id, track.immutable()))
 	checkHasOneSong(t, n, "artist", "title")
 
 	// Modyfing underlying data results in cache not changed
@@ -186,11 +186,11 @@ func TestCannotModifyCacheArray(t *testing.T) {
 	n := newCache()
 	track := makeTrack("artist", "title")
 
-	checkNoError(t, n.Add(id, track.Immutable()))
+	checkNoError(t, n.Add(id, track.immutable()))
 	checkHasOneSong(t, n, "artist", "title")
 
 	track2 := makeTrack("another", "different")
-	n.Get(id)[0] = track2.Immutable()
+	n.Get(id)[0] = track2.immutable()
 
 	// song in cache should not be modified
 	checkHasOneSong(t, n, "artist", "title")
@@ -200,12 +200,12 @@ func TestCannotModifyCacheArrayAfterReplaceAll(t *testing.T) {
 	n := newCache()
 	track := makeTrack("artist", "title")
 
-	all := append([]*ImmutableSpotifyTrack{}, track.Immutable())
+	all := append([]*ImmutableSpotifyTrack{}, track.immutable())
 	checkNoError(t, n.ReplaceAll(id, all))
 	checkHasOneSong(t, n, "artist", "title")
 
 	newTrack := makeTrack("other", "other")
-	all[0] = newTrack.Immutable()
+	all[0] = newTrack.immutable()
 	// song in cache should not be modified
 	checkHasOneSong(t, n, "artist", "title")
 }
@@ -216,13 +216,13 @@ func TestMoreSongs(t *testing.T) {
 	track2 := makeTrack("a2", "t2")
 	track3 := makeTrack("a3", "t3")
 
-	checkNoError(t, n.Add(id, track1.Immutable()))
-	checkNoError(t, n.Add(id, track2.Immutable()))
+	checkNoError(t, n.Add(id, track1.immutable()))
+	checkNoError(t, n.Add(id, track2.immutable()))
 
 	checkHasTwoSongs(t, n, "a1", "t1", "a2", "t2")
 
-	checkNoError(t, n.Remove(id, track2.Immutable()))
-	checkNoError(t, n.Add(id, track3.Immutable()))
+	checkNoError(t, n.Remove(id, track2.immutable()))
+	checkNoError(t, n.Add(id, track3.immutable()))
 	checkHasTwoSongs(t, n, "a1", "t1", "a3", "t3")
 }
 

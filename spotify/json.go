@@ -68,7 +68,7 @@ func (t SpotifyTrack) ArtistAsString() string {
 	return strings.Join(artists, ", ")
 }
 
-func (t *SpotifyTrack) Immutable() *ImmutableSpotifyTrack {
+func (t *SpotifyTrack) immutable() *ImmutableSpotifyTrack {
 	return &ImmutableSpotifyTrack{
 		artist: t.ArtistAsString(),
 		title:  t.Name,

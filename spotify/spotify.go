@@ -69,25 +69,25 @@ func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]*Immut
 	}
 	glog.V(1).Infof("Found 0 cached tracks for %v, connecting to spotify.", playlistId)
 
-	//Ingoring the error as the method updates cache
-	_, err := s.ListPlaylistNoCache(ctx, playlistId)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.cache.Get(playlistId), nil
+	//Ignoring the error as the method updates cache
+	return s.ListPlaylistWithFilter(ctx, playlistId, func(s SpotifyTrack) bool { return true })
 }
 
-func (s *Spotify) ListPlaylistNoCache(ctx context.Context, playlistId string) ([]SpotifyTrack, error) {
-	result, err := s.connector.listPlaylist(ctx, playlistId)
+func (s *Spotify) ListPlaylistWithFilter(ctx context.Context, playlistId string, filter func(SpotifyTrack) bool) ([]*ImmutableSpotifyTrack, error) {
+	tracks, err := s.connector.listPlaylist(ctx, playlistId)
 	if err != nil {
 		return nil, err
 	}
 
 	// Add songs to cache
-	cached := make([]*ImmutableSpotifyTrack, len(result))
-	for i := range result {
-		cached[i] = result[i].Immutable()
+	cached := make([]*ImmutableSpotifyTrack, len(tracks))
+	result := make([]*ImmutableSpotifyTrack, 0)
+	for i := range tracks {
+		imm := tracks[i].immutable()
+		cached[i] = imm
+		if filter(tracks[i]) {
+			result = append(result, imm)
+		}
 	}
 
 	s.cache.ReplaceAll(playlistId, cached)
@@ -95,7 +95,7 @@ func (s *Spotify) ListPlaylistNoCache(ctx context.Context, playlistId string) ([
 		return nil, err
 	}
 
-	glog.V(2).Infof("ListPlaylistNoCache cached: %v", result)
+	glog.V(2).Infof("ListPlaylistWithFilter: %v", tracks)
 	return result, nil
 }
 
@@ -107,7 +107,7 @@ func (s *Spotify) FindTracks(ctx context.Context, query string) ([]*ImmutableSpo
 
 	result := make([]*ImmutableSpotifyTrack, len(tracks))
 	for i := range tracks {
-		result[i] = tracks[i].Immutable()
+		result[i] = tracks[i].immutable()
 	}
 	return result, nil
 }
