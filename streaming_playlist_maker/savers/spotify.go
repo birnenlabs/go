@@ -29,18 +29,29 @@ func newSpotify(ctx context.Context) (SongSaver, error) {
 	}, nil
 }
 
-func (s *spotifySaver) Clean(ctx context.Context, conf SaverJob) error {
-	err := s.replaceUnplayable(ctx, conf.Playlist)
+func (s *spotifySaver) Clean(ctx context.Context, conf SaverJob) (*CleanStatus, error) {
+	// Replace unplayable should be first as it uses ListPlaylistWithFilter method that always connects to spotify.
+	unplayable, err := s.replaceUnplayable(ctx, conf.Playlist)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = s.findDuplicatesById(ctx, conf.Playlist)
+	duplicates, err := s.findDuplicatesById(ctx, conf.Playlist)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	similarTracks, err := s.findDuplicatesByName(ctx, conf.Playlist)
+	if err != nil {
+		return nil, err
+	}
+
+	return &CleanStatus{
+		Unavailable:         unplayable.Unavailable,
+		UnavailableReplaced: unplayable.UnavailableReplaced,
+		Duplicates:          duplicates,
+		Similar:             similarTracks,
+	}, nil
 }
 
 func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle string) (*Status, error) {
@@ -123,7 +134,7 @@ func (s *spotifySaver) findBestMatch(tracks []*spotify.ImmutableSpotifyTrack, ar
 	return bestTrack, bestTrackMatch
 }
 
-func (s *spotifySaver) replaceUnplayable(ctx context.Context, playlistId string) error {
+func (s *spotifySaver) replaceUnplayable(ctx context.Context, playlistId string) (*CleanStatus, error) {
 	trueForUnavailable := func(track spotify.SpotifyTrack) bool {
 		for _, market := range track.AvailableMarkets {
 			if market == spotifyMarket {
@@ -135,53 +146,60 @@ func (s *spotifySaver) replaceUnplayable(ctx context.Context, playlistId string)
 
 	tracks, err := s.spotify.ListPlaylistWithFilter(ctx, playlistId, trueForUnavailable)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	glog.Infof("[%v] Found %d unavailable tracks.", playlistId, len(tracks))
+	glog.V(1).Infof("[%v] Found %d unavailable tracks.", playlistId, len(tracks))
 
+	unavailable := 0
+	unavailableReplaced := 0
 	for _, t := range tracks {
 		artistTitle := t.String()
 		if len(artistTitle) == 0 {
 			// If artist - titile is empty song is removed.
-			glog.Infof("[%v] Removing invalid song: %#v", playlistId, t)
+			glog.V(1).Infof("[%v] Removing invalid song: %#v", playlistId, t)
 			err = s.spotify.RemoveFromPlaylist(ctx, playlistId, t)
 			if err != nil {
-				return fmt.Errorf("error while removing: %q when removing wrong song %#v", err, t)
+				return nil, fmt.Errorf("error while removing: %q when removing wrong song %#v", err, t)
 			}
 		} else {
 			// If not available try to find replacement
 			newTracks, err := s.spotify.FindTracks(ctx, artistTitle)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			newTrack, newTrackMatch := s.findBestMatch(newTracks, artistTitle)
 			if newTrackMatch >= validMatch {
-				glog.Infof("[%v] Replacing track:  %3d %q -> %q", playlistId, newTrackMatch, artistTitle, newTrack)
+				unavailableReplaced++
+				glog.V(1).Infof("[%v] Replacing track:  %3d %q -> %q", playlistId, newTrackMatch, artistTitle, newTrack)
 				// We have a good match
 				// first remove old song
 				err = s.spotify.RemoveFromPlaylist(ctx, playlistId, t)
 				if err != nil {
-					return fmt.Errorf("error while removing: %q during the process of replacing %q with %q", err, artistTitle, newTrack)
+					return nil, fmt.Errorf("error while removing: %q during the process of replacing %q with %q", err, artistTitle, newTrack)
 				}
 
 				// then add new song
 				err = s.spotify.AddToPlaylist(ctx, playlistId, newTrack)
 				if err != nil {
-					return fmt.Errorf("error while ADDING: %q during the process of replacing %q with %q - song was removed but new song was not added", err, artistTitle, newTrack)
+					return nil, fmt.Errorf("error while ADDING: %q during the process of replacing %q with %q - song was removed but new song was not added", err, artistTitle, newTrack)
 				}
 			} else {
-				glog.Infof("[%v] Unavailable track: %3d %q -> %q", playlistId, newTrackMatch, artistTitle, newTrack)
+				unavailable++
+				glog.V(1).Infof("[%v] Unavailable track: %3d %q -> %q", playlistId, newTrackMatch, artistTitle, newTrack)
 			}
 		}
 	}
-	return nil
+	return &CleanStatus{
+		Unavailable:         unavailable,
+		UnavailableReplaced: unavailableReplaced,
+	}, nil
 }
 
-func (s *spotifySaver) findDuplicatesById(ctx context.Context, playlistId string) error {
+func (s *spotifySaver) findDuplicatesById(ctx context.Context, playlistId string) (int, error) {
 	tracks, err := s.spotify.ListPlaylist(ctx, playlistId)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	toRemove := make(map[string]*spotify.ImmutableSpotifyTrack)
@@ -194,47 +212,44 @@ func (s *spotifySaver) findDuplicatesById(ctx context.Context, playlistId string
 	}
 
 	for _, t := range toRemove {
-		glog.Infof("[%v] Removing duplicates: %q", playlistId, t)
+		glog.V(1).Infof("[%v] Removing duplicates: %q", playlistId, t)
 
 		// remove all occurences of the song
 		err = s.spotify.RemoveFromPlaylist(ctx, playlistId, t)
 		if err != nil {
-			return fmt.Errorf("error while removing: %q during the process of removing duplicates of %q", err, t)
+			return 0, fmt.Errorf("error while removing: %q during the process of removing duplicates of %q", err, t)
 		}
 
 		// then add it back once
 		err = s.spotify.AddToPlaylist(ctx, playlistId, t)
 		if err != nil {
-			return fmt.Errorf("error while ADDING: %q during the process of removing duplicates of %q - song was removed but new song was not added", err, t)
+			return 0, fmt.Errorf("error while ADDING: %q during the process of removing duplicates of %q - song was removed but new song was not added", err, t)
 		}
 	}
 
-	return nil
+	return len(toRemove), nil
 }
 
-func (s *spotifySaver) findDuplicatesByName(ctx context.Context, playlistId string) error {
+func (s *spotifySaver) findDuplicatesByName(ctx context.Context, playlistId string) ([]*SimilarTrack, error) {
 	tracks, err := s.spotify.ListPlaylist(ctx, playlistId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	result := make([]*SimilarTrack, 0)
 	for i, t1 := range tracks[0 : len(tracks)-1] {
 		for _, t2 := range tracks[i+1:] {
 			match12 := spotify.CalculateMatchRatio(t1.String(), t2)
 			match21 := spotify.CalculateMatchRatio(t2.String(), t1)
-			if match12 >= validMatch || match21 >= validMatch {
-				glog.Infof("[%v] %3d %3d %q==%q", playlistId, match12, match21, t1, t2)
+			if match12+match21 >= 2*validMatch {
+				glog.V(1).Infof("[%v] %3d %3d %q==%q", playlistId, match12, match21, t1, t2)
+				result = append(result, &SimilarTrack{
+					Title1:        t1.String(),
+					Title2:        t2.String(),
+					AvgMatchRatio: (match12 + match21) / 2,
+				})
 			}
 		}
 	}
-	return nil
-}
-
-func isAvailable(track *spotify.SpotifyTrack) bool {
-	for _, market := range track.AvailableMarkets {
-		if market == spotifyMarket {
-			return true
-		}
-	}
-	return false
+	return result, nil
 }

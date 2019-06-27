@@ -11,8 +11,8 @@ func newStdout() (SongSaver, error) {
 	return &stdoutSaver{}, nil
 }
 
-func (s *stdoutSaver) Clean(ctx context.Context, conf SaverJob) error {
-	return nil
+func (s *stdoutSaver) Clean(ctx context.Context, conf SaverJob) (*CleanStatus, error) {
+	return nil, nil
 }
 
 func (s *stdoutSaver) Save(ctx context.Context, conf SaverJob, artistTitle string) (*Status, error) {
