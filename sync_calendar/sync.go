@@ -137,7 +137,7 @@ func main() {
 		glog.Fatalf("cannot create oauth dst: %v", err)
 	}
 
-	if !oathClientSrc.HasToken() {
+	if !oauthClientSrc.HasToken() {
 		fmt.Printf("SOURCE calendar: ")
 		oauthClientSrc.VerifyToken(ctx)
 	}
