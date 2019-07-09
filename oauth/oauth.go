@@ -32,7 +32,7 @@ func Create(clientName string) (*OAuth, error) {
 }
 
 func (o *OAuth) HasToken() bool {
-	_, err := loadToken()
+	_, err := o.loadToken()
 	return err == nil
 }
 
