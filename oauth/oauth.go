@@ -31,6 +31,11 @@ func Create(clientName string) (*OAuth, error) {
 	}, nil
 }
 
+func (o *OAuth) HasToken() bool {
+	_, err := loadToken()
+	return err == nil
+}
+
 func (o *OAuth) VerifyToken(ctx context.Context) error {
 	_, err := o.getToken(ctx, true)
 	return err
