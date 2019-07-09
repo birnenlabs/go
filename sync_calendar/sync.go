@@ -137,10 +137,15 @@ func main() {
 		glog.Fatalf("cannot create oauth dst: %v", err)
 	}
 
-	fmt.Printf("SOURCE calendar: ")
-	oauthClientSrc.VerifyToken(ctx)
-	fmt.Printf("DESTINATION calendar: ")
-	oauthClientDst.VerifyToken(ctx)
+	if !oathClientSrc.HasToken() {
+		fmt.Printf("SOURCE calendar: ")
+		oauthClientSrc.VerifyToken(ctx)
+	}
+
+	if !oauthClientDst.HasToken() {
+		fmt.Printf("DESTINATION calendar: ")
+		oauthClientDst.VerifyToken(ctx)
+	}
 
 	clientSrc, err := oauthClientSrc.CreateAuthenticatedHttpClient(ctx)
 	if err != nil {
