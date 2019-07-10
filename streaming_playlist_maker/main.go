@@ -26,53 +26,46 @@ func main() {
 	defer glog.Flush()
 	ctx := context.Background()
 
-	var configuration Configuration
-	err := conf.LoadConfigFromJson(*config, &configuration)
+	// Create notifier first
+	cloudMessage, err := automate.Create()
 	if err != nil {
-		glog.Exit("Cannot load config: ", err)
-	}
-	glog.V(3).Infof("Loaded configuration: %+v", configuration)
-
-	cloudMessage, err := createCloudNotifier(&configuration)
-	if err != nil {
-		glog.Exit("Cannot create cloud message: ", err)
+		// Not exiting here, continue without cloud notifier.
+		glog.Errorf("Could not create cloud message: %v", err)
 	}
 
-	sourcesMap, saversMap, err := createSourcesAndSavers(ctx, configuration.Jobs)
+	var jobs []Job
+	err = conf.LoadConfigFromJson(*config, &jobs)
 	if err != nil {
-		if cloudMessage != nil {
-			err2 := cloudMessage.SendFormattedCloudMessage(appName, configuration.EmailNotify, err.Error(), 1)
-			if err2 != nil {
-				glog.Errorf("Could not send cloud message: %v", err2)
-			}
-		}
-		glog.Exit("Cannot create sources and savers: ", err)
+		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
+		glog.Exit("Could not load config: ", err)
+	}
+	glog.V(3).Infof("Loaded configuration: %+v", jobs)
+
+	sourcesMap, saversMap, err := createSourcesAndSavers(ctx, jobs)
+	if err != nil {
+		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
+		glog.Exit("Could not create sources and savers: ", err)
 	}
 
 	glog.Infof("Cleaning savers")
-	err = cleanSavers(ctx, saversMap, configuration.Jobs)
+	err = cleanSavers(ctx, saversMap, jobs)
 	if err != nil {
+		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exit("Could not clean savers: ", err)
 	}
 
 	glog.Infof("Starting jobs")
 	stats := &statistics{}
 	var wg sync.WaitGroup
-	for _, conf := range configuration.Jobs {
+	for _, conf := range jobs {
 		if !conf.Active {
 			continue
 		}
 
 		err = stats.Init(conf.Name)
 		if err != nil {
-			if cloudMessage != nil {
-				err2 := cloudMessage.SendFormattedCloudMessage(appName, configuration.EmailNotify, err.Error(), 1)
-				if err2 != nil {
-					glog.Errorf("Could not send cloud message: %v", err2)
-				}
-			}
-
-			glog.Exit("Cannot initialize stats")
+			cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
+			glog.Exitf("Could initialize stats")
 		}
 
 		wg.Add(1)
@@ -91,26 +84,10 @@ func main() {
 	issues := stats.FindIssues()
 	glog.Infof("Statistics:\n%v%v", issues, stats)
 
-	if cloudMessage != nil {
-		err = cloudMessage.SendFormattedCloudMessage(appName, configuration.EmailNotify, "\n"+stats.String(), 0)
-		if err != nil {
-			glog.Errorf("Could not send cloud message: %v", err)
-		}
-
-		if len(issues) > 0 {
-			err = cloudMessage.SendFormattedCloudMessage(appName, configuration.EmailNotify, issues, 1)
-			if err != nil {
-				glog.Errorf("Could not send cloud message: %v", err)
-			}
-		}
+	cloudMessage.SendFormattedCloudMessageToDefault(appName, "\n"+stats.String(), 0)
+	if len(issues) > 0 {
+		cloudMessage.SendFormattedCloudMessageToDefault(appName, issues, 1)
 	}
-}
-
-func createCloudNotifier(configuration *Configuration) (*automate.CloudMessage, error) {
-	if len(configuration.EmailNotify) > 0 {
-		return automate.Create()
-	}
-	return nil, nil
 }
 
 func createSourcesAndSavers(ctx context.Context, jobs []Job) (map[string]sources.SongSource, map[string]savers.SongSaver, error) {
