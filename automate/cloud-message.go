@@ -4,6 +4,7 @@ import (
 	"birnenlabs.com/conf"
 	"bytes"
 	"fmt"
+	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -25,7 +26,8 @@ const (
 )
 
 type CloudMessage struct {
-	Secret string
+	Secret    string
+	DefaultTo string
 }
 
 func Create() (*CloudMessage, error) {
@@ -38,7 +40,22 @@ func Create() (*CloudMessage, error) {
 	return &result, nil
 }
 
+// All the methods of CloudMessage should support nil pointer!
+
+func (c *CloudMessage) SendCloudMessageToDefault(payload string) error {
+	if c == nil {
+		glog.Errorf("Could not send: %q.", payload)
+		return fmt.Errorf("%q not sent", payload)
+	}
+
+	return c.SendCloudMessage(c.DefaultTo, payload)
+}
+
 func (c *CloudMessage) SendCloudMessage(to string, payload string) error {
+	if c == nil {
+		glog.Errorf("Could not send: %q.", payload)
+		return fmt.Errorf("%q not sent", payload)
+	}
 
 	// Replace newlines and remove non printable characters
 	payload = strings.Replace(payload, "\n", `\n`, -1)
@@ -67,10 +84,17 @@ func (c *CloudMessage) SendCloudMessage(to string, payload string) error {
 	}
 }
 
+func (c *CloudMessage) SendFormattedCloudMessageToDefault(from string, msg string, priority int) error {
+	return c.SendCloudMessageToDefault(createFormattedPayload(from, msg, priority))
+}
+
 func (c *CloudMessage) SendFormattedCloudMessage(from string, to string, msg string, priority int) error {
+	return c.SendCloudMessage(to, createFormattedPayload(from, msg, priority))
+}
+
+func createFormattedPayload(from string, msg string, priority int) string {
 	hostname, _ := os.Hostname()
 	from = strings.Replace(from, "|", "", -1)
 	msg = strings.Replace(msg, "|", "", -1)
-	payload := fmt.Sprintf("%v [%v]|%v|%v", from, hostname, priority, msg)
-	return c.SendCloudMessage(to, payload)
+	return fmt.Sprintf("%v [%v]|%v|%v", from, hostname, priority, msg)
 }
