@@ -54,9 +54,24 @@ func LoadFromJson(filePath string, object interface{}) error {
 	return file.Close()
 }
 
+// Loads data from the gob file in the config directory:
+// $HOME/.config/{appName}.gob
+func LoadConfigFromFile(appName string, object interface{}) error {
+	return LoadFromFile(getPath(appName, "gob"), object)
+}
+
+// Saves data from the gob file in the config directory:
+// $HOME/.config/{appName}.gob
+func SaveConfigToFile(appName string, object interface{}) error {
+	return SaveToFile(getPath(appName, "gob"), object)
+}
+
 // Loads data from the JSON file in the config directory:
 // $HOME/.config/{appName}.json
 func LoadConfigFromJson(appName string, object interface{}) error {
-	filePath := os.Getenv("HOME") + "/.config/" + appName + ".json"
-	return LoadFromJson(filePath, object)
+	return LoadFromJson(getPath(appName, "json"), object)
+}
+
+func getPath(appName string, extension string) string {
+	return os.Getenv("HOME") + "/.config/" + appName + "." + extension
 }
