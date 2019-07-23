@@ -69,7 +69,10 @@ func (m *Mailgun) SendBounceEmail(email Email) error {
 	payload.Add("subject", email.Subject)
 	payload.Add("text", email.Text)
 	for _, to := range email.To {
-		payload.Add("to", to)
+		// Send bounces to our domain only.
+		if strings.HasSuffix(to, m.domain) {
+			payload.Add("to", to)
+		}
 	}
 
 	payload.Add("h:Auto-Submitted", "auto-replied")
