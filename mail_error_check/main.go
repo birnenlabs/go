@@ -7,10 +7,12 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
+	"strings"
 	"time"
 )
 
 const appName = "mail_error_check"
+const temporarySeverity = "temporary"
 
 type Config struct {
 	LastRun int64
@@ -51,23 +53,19 @@ func main() {
 		glog.Exit("Could not list failed events:", err)
 	}
 
-	itemsMap := m.GroupItems(items)
-	for headers, messages := range itemsMap {
-		if len(messages) == 0 {
-			errTxt := "Zero groupped messages for message ID. This is most likely application bug."
-			cloudMessage.SendFormattedCloudMessageToDefault(appName, errTxt, 1)
-			glog.Exit(errTxt)
+	for _, item := range items {
+		if item.Severity == temporarySeverity && item.DeliveryStatus.AttemptNo > 1 {
+			glog.Infof("Ignoring %d attempt of %s error from: %s to: %s", item.DeliveryStatus.AttemptNo, temporarySeverity, item.Envelope.Sender, item.Envelope.Targets)
+			continue
 		}
-		// Envelope should be the same for all messages, and we just checked if len(messages) is not zero.
-		envelope := messages[0].Envelope
-		glog.Infof("%d messages from: %v to %v", len(messages), headers.From, headers.To)
+		glog.Infof("Will send warning for message from: %s to: %s", item.DeliveryStatus.AttemptNo, temporarySeverity, item.Envelope.Sender, item.Envelope.Targets)
 
 		email := mailgun.Email{
-			From:      envelope.Targets,
-			To:        []string{envelope.Sender},
-			Subject:   "Re: " + headers.Subject,
-			Text:      generateErrorEmailText(messages),
-			Reference: "<" + headers.MessageId + ">",
+			From:      item.Envelope.Targets,
+			To:        []string{item.Envelope.Sender},
+			Subject:   "Re: " + item.Message.Headers.Subject,
+			Text:      generateErrorEmailText(item),
+			Reference: "<" + item.Message.Headers.MessageId + ">",
 		}
 
 		err = m.SendBounceEmail(email)
@@ -89,30 +87,30 @@ func main() {
 	cloudMessage.SendFormattedCloudMessageToDefault(appName, fmt.Sprintf("Processed %d messages", len(items)), 0)
 }
 
-func generateErrorEmailText(items []mailgun.Item) string {
-	if len(items) == 0 {
-		return ""
+func generateErrorEmailText(item mailgun.Item) string {
+	isTemp := (item.Severity == temporarySeverity)
+
+	result := fmt.Sprintf("Mail Delivery %s Failure.\n\nThis is an automatically generated Delivery Status Notification.\n\n", strings.Title(item.Severity))
+
+	if isTemp {
+		result = result + "THIS IS A WARNING MESSAGE ONLY.\nYOU DO NOT NEED TO RESEND YOUR MESSAGE.\n\n"
 	}
 
-	tmpl := temporaryErrorTmpl
-	for _, item := range items {
-		if item.Severity == "permanent" {
-			tmpl = permanentErrorTmpl
-			break
-		}
+	result = result + fmt.Sprintf("Delivery to the following recipients:\n\n\t\t%s\n\n", item.Envelope.Targets)
+
+	if isTemp {
+		result = result + "has been delayed.\nTechnical details:\n"
+	} else {
+		result = result + fmt.Sprintf("failed permanently after %d attempts.\nTechnical details:\n", item.DeliveryStatus.AttemptNo)
 	}
 
-	details := ""
-	for _, item := range items {
-		reason := ""
-		if len(item.DeliveryStatus.Message) > 0 {
-			reason = item.DeliveryStatus.Message
-		}
-		if len(item.DeliveryStatus.Description) > 0 && item.DeliveryStatus.Message != item.DeliveryStatus.Description {
-			reason = reason + "\n" + item.DeliveryStatus.Description
-		}
-		details = details + fmt.Sprintf(technicalDetailsTmpl, item.DeliveryStatus.AttemptNo, time.Unix(int64(item.Timestamp), 0).UTC(), item.Severity, item.DeliveryStatus.Code, item.Reason, reason)
+	result = result + fmt.Sprintf("Timestamp: %s\nSeverity: %s\nSMTP code: %d\nReason: %s\n", time.Unix(int64(item.Timestamp), 0).UTC(), item.Severity, item.DeliveryStatus.Code, item.Reason)
+	if len(item.DeliveryStatus.Message) > 0 {
+		result = result + item.DeliveryStatus.Message + "\n"
+	}
+	if len(item.DeliveryStatus.Description) > 0 && item.DeliveryStatus.Message != item.DeliveryStatus.Description {
+		result = result + item.DeliveryStatus.Description + "\n"
 	}
 
-	return fmt.Sprintf(tmpl, items[0].Message.Headers.To, details)
+	return result
 }
