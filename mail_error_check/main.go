@@ -45,9 +45,11 @@ func main() {
 	}
 
 	now := time.Now().Unix()
-	glog.Infof("Listing emails between %d and %d", now, config.LastRun)
+	from := max(config.LastRun, now - 2592000) // 2592000 == 30*24*3600
 
-	items, err := m.ListFailedEventsTimeRange(now, config.LastRun)
+	glog.Infof("Listing emails between %d and %d", now, from)
+
+	items, err := m.ListFailedEventsTimeRange(now, from)
 	if err != nil {
 		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exit("Could not list failed events:", err)
@@ -113,4 +115,11 @@ func generateErrorEmailText(item mailgun.Item) string {
 	}
 
 	return result
+}
+
+func max(x, y int64) int64 {
+    if x > y {
+        return x
+    }
+    return y
 }
