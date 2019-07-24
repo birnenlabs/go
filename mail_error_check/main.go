@@ -58,7 +58,7 @@ func main() {
 			glog.Infof("Ignoring %d attempt of %s error from: %s to: %s", item.DeliveryStatus.AttemptNo, temporarySeverity, item.Envelope.Sender, item.Envelope.Targets)
 			continue
 		}
-		glog.Infof("Will send warning for message from: %s to: %s", item.DeliveryStatus.AttemptNo, temporarySeverity, item.Envelope.Sender, item.Envelope.Targets)
+		glog.Infof("Will send warning for message from: %s to: %s.", item.Envelope.Sender, item.Envelope.Targets)
 
 		email := mailgun.Email{
 			From:      item.Envelope.Targets,
@@ -99,17 +99,17 @@ func generateErrorEmailText(item mailgun.Item) string {
 	result = result + fmt.Sprintf("Delivery to the following recipients:\n\n\t\t%s\n\n", item.Envelope.Targets)
 
 	if isTemp {
-		result = result + "has been delayed.\nTechnical details:\n"
+		result = result + "has been delayed.\n\n\nTechnical details:\n"
 	} else {
-		result = result + fmt.Sprintf("failed permanently after %d attempts.\nTechnical details:\n", item.DeliveryStatus.AttemptNo)
+		result = result + fmt.Sprintf("failed permanently after %d attempts.\n\n\nTechnical details:\n", item.DeliveryStatus.AttemptNo)
 	}
 
-	result = result + fmt.Sprintf("Timestamp: %s\nSeverity: %s\nSMTP code: %d\nReason: %s\n", time.Unix(int64(item.Timestamp), 0).UTC(), item.Severity, item.DeliveryStatus.Code, item.Reason)
+	result = result + fmt.Sprintf("Timestamp: %s\nSeverity: %s\nSMTP code: %d\nReason: %s\n\n", time.Unix(int64(item.Timestamp), 0).UTC(), item.Severity, item.DeliveryStatus.Code, item.Reason)
 	if len(item.DeliveryStatus.Message) > 0 {
-		result = result + item.DeliveryStatus.Message + "\n"
+		result = result + item.DeliveryStatus.Message + "\n\n"
 	}
 	if len(item.DeliveryStatus.Description) > 0 && item.DeliveryStatus.Message != item.DeliveryStatus.Description {
-		result = result + item.DeliveryStatus.Description + "\n"
+		result = result + item.DeliveryStatus.Description + "\n\n"
 	}
 
 	return result
