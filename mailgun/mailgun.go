@@ -120,6 +120,15 @@ func (m *Mailgun) ListFailedEventsTimeRange(begin, end int64) ([]Item, error) {
 	return result, nil
 }
 
+func (m *Mailgun) GroupItems(items []Item) map[Headers][]Item {
+	result := make(map[Headers][]Item)
+	for _, item := range items {
+		result[item.Message.Headers] = append(result[item.Message.Headers], item)
+
+	}
+	return result
+}
+
 func (m *Mailgun) makeGetRequest(uri string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
