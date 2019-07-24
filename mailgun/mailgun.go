@@ -2,6 +2,7 @@ package mailgun
 
 import (
 	"birnenlabs.com/conf"
+	"birnenlabs.com/ratelimit"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const apiUser = "api"
@@ -17,7 +19,7 @@ type Mailgun struct {
 	apiKey string
 	domain string
 	eu     string
-	client *http.Client
+	client ratelimit.AnyClient
 }
 
 func New() (*Mailgun, error) {
@@ -34,7 +36,7 @@ func New() (*Mailgun, error) {
 		apiKey: config.ApiKey,
 		domain: config.Domain,
 		eu:     eu,
-		client: &http.Client{},
+		client: ratelimit.New(&http.Client{}, time.Second),
 	}, nil
 }
 
