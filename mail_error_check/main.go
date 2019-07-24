@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
-	"strings"
 	"time"
 )
 
@@ -52,15 +51,23 @@ func main() {
 		glog.Exit("Could not list failed events:", err)
 	}
 
-	for _, item := range items {
-		glog.Infof("Message from: %v to %v - code: %d", item.Envelope.Sender, item.Envelope.Targets, item.DeliveryStatus.Code)
+	itemsMap := m.GroupItems(items)
+	for headers, messages := range itemsMap {
+		if len(messages) == 0 {
+			errTxt := "Zero groupped messages for message ID. This is most likely application bug."
+			cloudMessage.SendFormattedCloudMessageToDefault(appName, errTxt, 1)
+			glog.Exit(errTxt)
+		}
+		// Envelope should be the same for all messages, and we just checked if len(messages) is not zero.
+		envelope := messages[0].Envelope
+		glog.Infof("%d messages from: %v to %v", len(messages), headers.From, headers.To)
 
 		email := mailgun.Email{
-			From:      item.Envelope.Targets,
-			To:        []string{item.Envelope.Sender},
-			Subject:   "Re: " + item.Message.Headers.Subject,
-			Text:      generateErrorEmailText(item),
-			Reference: "<" + item.Message.Headers.MessageId + ">",
+			From:      envelope.Targets,
+			To:        []string{envelope.Sender},
+			Subject:   "Re: " + headers.Subject,
+			Text:      generateErrorEmailText(messages),
+			Reference: "<" + headers.MessageId + ">",
 		}
 
 		err = m.SendBounceEmail(email)
@@ -82,21 +89,30 @@ func main() {
 	cloudMessage.SendFormattedCloudMessageToDefault(appName, fmt.Sprintf("Processed %d messages", len(items)), 0)
 }
 
-func generateErrorEmailText(item mailgun.Item) string {
-	var tmpl string
-	if item.Severity == "permanent" {
-		tmpl = permanentErrorTmpl
-	} else {
-		tmpl = temporaryErrorTmpl
+func generateErrorEmailText(items []mailgun.Item) string {
+	if len(items) == 0 {
+		return ""
 	}
 
-	reason := ""
-	if len(item.DeliveryStatus.Message) > 0 {
-		reason = item.DeliveryStatus.Message
-	}
-	if len(item.DeliveryStatus.Description) > 0 && item.DeliveryStatus.Message != item.DeliveryStatus.Description {
-		reason = reason + "\n" + item.DeliveryStatus.Description
+	tmpl := temporaryErrorTmpl
+	for _, item := range items {
+		if item.Severity == "permanent" {
+			tmpl = permanentErrorTmpl
+			break
+		}
 	}
 
-	return fmt.Sprintf(tmpl, strings.Title(item.Severity), item.Envelope.Targets, item.DeliveryStatus.AttemptNo, item.DeliveryStatus.Code, item.Reason, reason)
+	details := ""
+	for _, item := range items {
+		reason := ""
+		if len(item.DeliveryStatus.Message) > 0 {
+			reason = item.DeliveryStatus.Message
+		}
+		if len(item.DeliveryStatus.Description) > 0 && item.DeliveryStatus.Message != item.DeliveryStatus.Description {
+			reason = reason + "\n" + item.DeliveryStatus.Description
+		}
+		details = details + fmt.Sprintf(technicalDetailsTmpl, item.DeliveryStatus.AttemptNo, time.Unix(int64(item.Timestamp), 0).UTC(), item.Severity, item.DeliveryStatus.Code, item.Reason, reason)
+	}
+
+	return fmt.Sprintf(tmpl, items[0].Message.Headers.To, details)
 }
