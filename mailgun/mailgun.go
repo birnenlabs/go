@@ -118,6 +118,10 @@ func (m *Mailgun) IsInMyDomain(address string) bool {
 	return strings.HasSuffix(address, "@"+m.domain)
 }
 
+func (m *Mailgun) CreateAddress(user string) string {
+	return user + "@" + m.domain
+}
+
 func createPayload(email Email) url.Values {
 	payload := url.Values{}
 	payload.Add("from", email.From)
