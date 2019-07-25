@@ -45,7 +45,7 @@ func main() {
 	}
 
 	now := time.Now().Unix()
-	from := max(config.LastRun, now - 2592000) // 2592000 == 30*24*3600
+	from := max(config.LastRun, now-2592000) // 2592000 == 30*24*3600
 
 	glog.Infof("Listing emails between %d and %d", from, now)
 
@@ -63,11 +63,20 @@ func main() {
 		glog.Infof("Will send warning for message from: %s to: %s.", item.Envelope.Sender, item.Envelope.Targets)
 
 		email := mailgun.Email{
+			// From is replaced by mailer-daemon@ in bounce emails.
 			From:      item.Envelope.Targets,
-			To:        []string{item.Envelope.Sender},
-			Subject:   "Re: " + item.Message.Headers.Subject,
 			Text:      generateErrorEmailText(item),
 			Reference: "<" + item.Message.Headers.MessageId + ">",
+		}
+
+		if m.IsInMyDomain(item.Envelope.Sender) {
+			// Sender is in our domain, let's send bounce.
+			email.To = item.Envelope.Sender
+			email.Subject = "Re: " + item.Message.Headers.Subject
+		} else {
+			// Sender is outside our domain, let's notify postmaster.
+			email.To = m.CreateAddress("postmaster")
+			email.Subject = "Failure: " + item.Message.Headers.Subject
 		}
 
 		err = m.SendBounceEmail(email)
@@ -95,10 +104,11 @@ func generateErrorEmailText(item mailgun.Item) string {
 	result := fmt.Sprintf("Mail Delivery %s Failure.\n\nThis is an automatically generated Delivery Status Notification.\n\n", strings.Title(item.Severity))
 
 	if isTemp {
-		result = result + "THIS IS A WARNING MESSAGE ONLY.\nYOU DO NOT NEED TO RESEND YOUR MESSAGE.\n\n"
+		result = result + "THIS IS A WARNING MESSAGE ONLY.\nYOU DO NOT NEED TO RESEND YOUR MESSAGE.\nSERVER WILL RETRY FOR THE NEXT 12 HOURS.\n\n"
 	}
 
 	result = result + fmt.Sprintf("Delivery to the following recipients:\n\n\t\t%s\n\n", item.Envelope.Targets)
+	result = result + fmt.Sprintf("Delivery of the following message:\n\n\t\tFrom: %s, to: %s\n\n", item.Envelope.Sender, item.Envelope.Targets)
 
 	if isTemp {
 		result = result + "has been delayed.\n\n\nTechnical details:\n"
@@ -118,8 +128,8 @@ func generateErrorEmailText(item mailgun.Item) string {
 }
 
 func max(x, y int64) int64 {
-    if x > y {
-        return x
-    }
-    return y
+	if x > y {
+		return x
+	}
+	return y
 }
