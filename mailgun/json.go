@@ -69,7 +69,7 @@ type Paging struct {
 
 type Email struct {
 	From      string
-	To        []string
+	To        string
 	Subject   string
 	Text      string
 	Reference string

@@ -44,18 +44,7 @@ func (m *Mailgun) SendEmail(email Email) error {
 	uri := fmt.Sprintf("https://api%s.mailgun.net/v3/%s/messages", m.eu, m.domain)
 	glog.Infof("SendEmail url: %v", uri)
 
-	payload := url.Values{}
-	payload.Add("from", email.From)
-	payload.Add("subject", email.Subject)
-	payload.Add("text", email.Text)
-	for _, to := range email.To {
-		payload.Add("to", to)
-	}
-
-	if len(email.Reference) > 0 {
-		payload.Add("h:In-Reply-To", email.Reference)
-		payload.Add("h:References", email.Reference)
-	}
+	payload := createPayload(email)
 
 	_, err := m.makePostRequest(uri, payload)
 	return err
@@ -66,24 +55,18 @@ func (m *Mailgun) SendBounceEmail(email Email) error {
 	uri := fmt.Sprintf("https://api%s.mailgun.net/v3/%s/messages", m.eu, m.domain)
 	glog.Infof("SendBounceEmail url: %v", uri)
 
-	payload := url.Values{}
-	payload.Add("from", fmt.Sprintf("Mail Delivery Subsystem <mailer-daemon@%s>", m.domain))
-	payload.Add("subject", email.Subject)
-	payload.Add("text", email.Text)
-	for _, to := range email.To {
+	originalFrom := email.From
+	email.From = fmt.Sprintf("Mail Delivery Subsystem <mailer-daemon@%s>", m.domain)
+
+	if !strings.HasSuffix(email.To, "@"+m.domain) {
 		// Send bounces to our domain only.
-		if strings.HasSuffix(to, m.domain) {
-			payload.Add("to", to)
-		}
+		return fmt.Errorf("Bounces should be sent to own domain only")
 	}
 
+	payload := createPayload(email)
 	payload.Add("h:Auto-Submitted", "auto-replied")
 	payload.Add("h:Return-path", "<>")
-	payload.Add("h:X-Failed-Recipients", email.From)
-	if len(email.Reference) > 0 {
-		payload.Add("h:In-Reply-To", email.Reference)
-		payload.Add("h:References", email.Reference)
-	}
+	payload.Add("h:X-Failed-Recipients", originalFrom)
 
 	_, err := m.makePostRequest(uri, payload)
 	return err
@@ -129,6 +112,21 @@ func (m *Mailgun) GroupItems(items []Item) map[Headers][]Item {
 
 	}
 	return result
+}
+
+func createPayload(email Email) url.Values {
+	payload := url.Values{}
+	payload.Add("from", email.From)
+	payload.Add("subject", email.Subject)
+	payload.Add("text", email.Text)
+	payload.Add("to", email.To)
+
+	if len(email.Reference) > 0 {
+		payload.Add("h:In-Reply-To", email.Reference)
+		payload.Add("h:References", email.Reference)
+	}
+
+	return payload
 }
 
 func (m *Mailgun) makeGetRequest(uri string) ([]byte, error) {
