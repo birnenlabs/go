@@ -58,7 +58,7 @@ func (m *Mailgun) SendBounceEmail(email Email) error {
 	originalFrom := email.From
 	email.From = fmt.Sprintf("Mail Delivery Subsystem <mailer-daemon@%s>", m.domain)
 
-	if !strings.HasSuffix(email.To, "@"+m.domain) {
+	if !m.IsInMyDomain(email.To) {
 		// Send bounces to our domain only.
 		return fmt.Errorf("Bounces should be sent to own domain only")
 	}
@@ -112,6 +112,10 @@ func (m *Mailgun) GroupItems(items []Item) map[Headers][]Item {
 
 	}
 	return result
+}
+
+func (m *Mailgun) IsInMyDomain(address string) bool {
+	return strings.HasSuffix(address, "@"+m.domain)
 }
 
 func createPayload(email Email) url.Values {
