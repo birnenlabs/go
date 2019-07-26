@@ -107,8 +107,7 @@ func generateErrorEmailText(item mailgun.Item) string {
 		result = result + "THIS IS A WARNING MESSAGE ONLY.\nYOU DO NOT NEED TO RESEND YOUR MESSAGE.\nSERVER WILL RETRY FOR THE NEXT 12 HOURS.\n\n"
 	}
 
-	result = result + fmt.Sprintf("Delivery to the following recipients:\n\n\t\t%s\n\n", item.Envelope.Targets)
-	result = result + fmt.Sprintf("Delivery of the following message:\n\n\t\tFrom: %s, to: %s\n\n", item.Envelope.Sender, item.Envelope.Targets)
+	result = result + fmt.Sprintf("Delivery of the following message:\n\n\tFrom: %s\n\tTo: %s\n\n", item.Envelope.Sender, item.Envelope.Targets)
 
 	if isTemp {
 		result = result + "has been delayed.\n\n\nTechnical details:\n"
