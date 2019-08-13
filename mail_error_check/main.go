@@ -13,15 +13,20 @@ import (
 
 const appName = "mail_error_check"
 const temporarySeverity = "temporary"
+const oneMonth = 30 * 24 * 3600
 
 type Config struct {
 	LastRun int64
 }
 
+var dryRun = flag.Bool("dryrun", false, "Dry run")
+
 func main() {
 	flag.Parse()
 	flag.Set("alsologtostderr", "true")
 	defer glog.Flush()
+
+	glog.Infof("Dry run mode: %v", *dryRun)
 
 	// Create notifier first
 	cloudMessage, err := automate.Create()
@@ -37,6 +42,7 @@ func main() {
 		glog.Exit("Could not create mailgun instance:", err)
 	}
 
+	// Load configuration
 	var config Config
 	err = conf.LoadConfigFromFile(appName, &config)
 	if err != nil {
@@ -45,60 +51,76 @@ func main() {
 	}
 
 	now := time.Now().Unix()
-	from := max(config.LastRun, now-2592000) // 2592000 == 30*24*3600
 
-	glog.Infof("Listing emails between %d and %d", from, now)
-
-	items, err := m.ListFailedEventsTimeRange(from, now)
+	// Process our events first...
+	err = processEvents(m, max(config.LastRun, now-oneMonth), now)
 	if err != nil {
 		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
-		glog.Exit("Could not list failed events:", err)
+		glog.Exit("Could not process our emails", err)
+	}
+
+	// ...and save our events state
+	config.LastRun = now
+	if *dryRun {
+		glog.Infof("DRY RUN: would save config: %+v", config)
+	} else {
+		err = conf.SaveConfigToFile(appName, &config)
+		if err != nil {
+			cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
+			glog.Errorf("Could not save last run time to file: %s", err)
+		}
+	}
+
+	cloudMessage.SendFormattedCloudMessageToDefault(appName, "Done", 0)
+}
+
+func processEvents(m *mailgun.Mailgun, begin, end int64) error {
+	glog.Infof("Processing emails between %d and %d", begin, end)
+	items, err := m.ListAllEvents(begin, end)
+	if err != nil {
+		return err
 	}
 
 	for _, item := range items {
+		// Ignoring second and following attempts of temporary failure
 		if item.Severity == temporarySeverity && item.DeliveryStatus.AttemptNo > 1 {
-			glog.Infof("Ignoring %d attempt of %s error from: %s to: %s", item.DeliveryStatus.AttemptNo, temporarySeverity, item.Envelope.Sender, item.Envelope.Targets)
+			glog.Infof("Ignoring %d attempt of %s error from: %s to: %s", item.DeliveryStatus.AttemptNo, temporarySeverity, item.From(), item.To())
 			continue
 		}
-		glog.Infof("Will send warning for message from: %s to: %s.", item.Envelope.Sender, item.Envelope.Targets)
 
 		email := mailgun.Email{
-			// From is replaced by mailer-daemon@ in bounce emails.
-			From:      item.Envelope.Targets,
-			Text:      generateErrorEmailText(item),
+			From:      m.MailerDaemon(),
+			Text:      generateBounceEmailText(item),
+			Subject:   "Re: " + item.Message.Headers.Subject,
 			Reference: "<" + item.Message.Headers.MessageId + ">",
 		}
 
-		if m.IsInMyDomain(item.Envelope.Sender) {
-			// Sender is in our domain, let's send bounce.
-			email.To = item.Envelope.Sender
-			email.Subject = "Re: " + item.Message.Headers.Subject
-		} else {
-			// Sender is outside our domain, let's notify postmaster.
+		if m.IsInMyDomain(item.From()) {
+			// Always inform about actions originating in own domain
+			email.To = item.From()
+		} else if item.Event == mailgun.EventFailed {
+			// Send email to postmaster for other domain's failures
 			email.To = m.CreateAddress("postmaster")
-			email.Subject = "Failure: " + item.Message.Headers.Subject
+		} else {
+			// Ignore everything else
+			glog.Infof("Ignoring stored/rejected event not originating from domain. From %s, To: %s", item.From(), item.To())
+			continue
 		}
 
-		err = m.SendBounceEmail(email)
-		if err != nil {
-			cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
-			glog.Exit("Could not send email:", err)
+		if *dryRun {
+			glog.Infof("DRY RUN: would send email:\n %+v", email)
+		} else {
+			err = m.SendBounceEmail(email, item.To() /*failedRecipient*/)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	config = Config{
-		LastRun: now,
-	}
-	err = conf.SaveConfigToFile(appName, &config)
-	if err != nil {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
-		glog.Errorf("Could not save last run time to file: %s", err)
-	}
-
-	cloudMessage.SendFormattedCloudMessageToDefault(appName, fmt.Sprintf("Processed %d messages", len(items)), 0)
+	return nil
 }
 
-func generateErrorEmailText(item mailgun.Item) string {
+func generateBounceEmailText(item mailgun.Item) string {
 	isTemp := (item.Severity == temporarySeverity)
 
 	result := fmt.Sprintf("Mail Delivery %s Failure.\n\nThis is an automatically generated Delivery Status Notification.\n\n", strings.Title(item.Severity))
@@ -107,7 +129,7 @@ func generateErrorEmailText(item mailgun.Item) string {
 		result = result + "THIS IS A WARNING MESSAGE ONLY.\nYOU DO NOT NEED TO RESEND YOUR MESSAGE.\nSERVER WILL RETRY FOR THE NEXT 12 HOURS.\n\n"
 	}
 
-	result = result + fmt.Sprintf("Delivery of the following message:\n\n\tFrom: %s\n\tTo: %s\n\n", item.Envelope.Sender, item.Envelope.Targets)
+	result = result + fmt.Sprintf("Delivery of the following message:\n\n\tFrom: %s\n\tTo: %s\n\n", item.From(), item.To())
 
 	if isTemp {
 		result = result + "has been delayed.\n\n\nTechnical details:\n"
