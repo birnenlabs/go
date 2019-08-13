@@ -1,10 +1,8 @@
-This is a repository of some golang libraries that I use in my scripts for managing calendar, updating spotify playlists etc. 
+This is a repository of my golang libraries and projects.
 
-Please use `birnenlabs.com/DIR` when importing packages from this repository.
-
-Example:
-```go
-import (
-    "birnenlabs.com/oauth"
-)
+The lib directory contains various libraries ready for use:
 ```
+go get birnenlabs.com/lib/...
+```
+
+All the other projects are more specific to single purpose - feel free to use and copy the code.
