@@ -1,5 +1,9 @@
 package mailgun
 
+import (
+	"regexp"
+)
+
 type Config struct {
 	ApiKey string
 	Domain string
@@ -73,4 +77,25 @@ type Email struct {
 	Subject   string
 	Text      string
 	Reference string
+}
+
+var emailRegexp = regexp.MustCompile(`<[^<>]*>`)
+
+func (i *Item) From() string {
+	if len(i.Envelope.Sender) > 0 {
+		return i.Envelope.Sender
+	}
+	return findEmail(i.Message.Headers.From)
+}
+
+func (i *Item) To() string {
+	if len(i.Envelope.Targets) > 0 {
+		return i.Envelope.Targets
+	}
+	return findEmail(i.Message.Headers.To)
+}
+
+func findEmail(header string) string {
+	a := emailRegexp.FindString(header)
+	return a[1 : len(a)-1]
 }

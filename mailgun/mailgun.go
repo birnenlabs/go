@@ -15,6 +15,10 @@ import (
 
 const apiUser = "api"
 
+const EventFailed = "failed"
+const EventRejected = "rejected"
+const EventStored = "stored"
+
 type Mailgun struct {
 	apiKey string
 	domain string
@@ -50,37 +54,49 @@ func (m *Mailgun) SendEmail(email Email) error {
 	return err
 }
 
-// Sends bounce email. Email.From should be set to the failed recipient.
-func (m *Mailgun) SendBounceEmail(email Email) error {
+// Sends bounce email. Email.From is ignored.
+func (m *Mailgun) SendBounceEmail(email Email, failedRecipient string) error {
 	uri := fmt.Sprintf("https://api%s.mailgun.net/v3/%s/messages", m.eu, m.domain)
 	glog.Infof("SendBounceEmail url: %v", uri)
-
-	originalFrom := email.From
-	email.From = fmt.Sprintf("Mail Delivery Subsystem <mailer-daemon@%s>", m.domain)
 
 	if !m.IsInMyDomain(email.To) {
 		// Send bounces to our domain only.
 		return fmt.Errorf("Bounces should be sent to own domain only")
 	}
 
+	// Ignore from
+	email.From = fmt.Sprintf("Mail Delivery Subsystem <mailer-daemon@%s>", m.domain)
+
 	payload := createPayload(email)
 	payload.Add("h:Auto-Submitted", "auto-replied")
 	payload.Add("h:Return-path", "<>")
-	payload.Add("h:X-Failed-Recipients", originalFrom)
+	payload.Add("h:X-Failed-Recipients", failedRecipient)
 
 	_, err := m.makePostRequest(uri, payload)
 	return err
 
 }
 
-func (m *Mailgun) ListFailedEvents() ([]Item, error) {
-	return m.ListFailedEventsTimeRange(4000000000, 0) // 4000000000 = 2096.10.02
+func (m *Mailgun) ListFailedEvents(begin, end int64) ([]Item, error) {
+	return m.listEvents(begin, end, EventFailed)
 }
 
-func (m *Mailgun) ListFailedEventsTimeRange(begin, end int64) ([]Item, error) {
+func (m *Mailgun) ListRejectedEvents(begin, end int64) ([]Item, error) {
+	return m.listEvents(begin, end, EventRejected)
+}
+
+func (m *Mailgun) ListStoredEvents(begin, end int64) ([]Item, error) {
+	return m.listEvents(begin, end, EventStored)
+}
+
+func (m *Mailgun) ListAllEvents(begin, end int64) ([]Item, error) {
+	return m.listEvents(begin, end, fmt.Sprintf("%s%%20OR%%20%s%%20OR%%20%s", EventFailed, EventRejected, EventStored))
+}
+
+func (m *Mailgun) listEvents(begin, end int64, event string) ([]Item, error) {
 	result := make([]Item, 0)
 
-	nextUrl := fmt.Sprintf("https://api%s.mailgun.net/v3/%s/events?event=rejected%%20OR%%20failed&begin=%v&end=%v", m.eu, m.domain, begin, end)
+	nextUrl := fmt.Sprintf("https://api%s.mailgun.net/v3/%s/events?event=%s&begin=%v&end=%v", m.eu, m.domain, event, begin, end)
 
 	for nextUrl != "" {
 		glog.Infof("ListFailedEvent url: %v", nextUrl)
@@ -105,7 +121,8 @@ func (m *Mailgun) ListFailedEventsTimeRange(begin, end int64) ([]Item, error) {
 	return result, nil
 }
 
-func (m *Mailgun) GroupItems(items []Item) map[Headers][]Item {
+// TO DELETE
+func (m *Mailgun) groupItems(items []Item) map[Headers][]Item {
 	result := make(map[Headers][]Item)
 	for _, item := range items {
 		result[item.Message.Headers] = append(result[item.Message.Headers], item)
@@ -120,6 +137,10 @@ func (m *Mailgun) IsInMyDomain(address string) bool {
 
 func (m *Mailgun) CreateAddress(user string) string {
 	return user + "@" + m.domain
+}
+
+func (m *Mailgun) MailerDaemon() string {
+	return fmt.Sprintf("Mail Delivery Subsystem <mailer-daemon@%s>", m.domain)
 }
 
 func createPayload(email Email) url.Values {
