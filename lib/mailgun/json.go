@@ -97,5 +97,8 @@ func (i *Item) To() string {
 
 func findEmail(header string) string {
 	a := emailRegexp.FindString(header)
+	if len(a) < 2 {
+		return ""
+	}
 	return a[1 : len(a)-1]
 }
