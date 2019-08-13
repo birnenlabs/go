@@ -99,7 +99,7 @@ func (m *Mailgun) listEvents(begin, end int64, event string) ([]Item, error) {
 	nextUrl := fmt.Sprintf("https://api%s.mailgun.net/v3/%s/events?event=%s&begin=%v&end=%v", m.eu, m.domain, event, begin, end)
 
 	for nextUrl != "" {
-		glog.Infof("ListFailedEvent url: %v", nextUrl)
+		glog.Infof("ListEvents url: %v", nextUrl)
 		body, err := m.makeGetRequest(nextUrl)
 		if err != nil {
 			return nil, err
