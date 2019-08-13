@@ -4,10 +4,9 @@ package icy
 import (
 	"bufio"
 	"fmt"
+	"github.com/golang/glog"
 	"net/http"
 	"time"
-
-	"github.com/golang/glog"
 )
 
 var (

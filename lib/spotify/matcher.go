@@ -1,10 +1,9 @@
 package spotify
 
 import (
+	"github.com/golang/glog"
 	"regexp"
 	"strings"
-
-	"github.com/golang/glog"
 )
 
 var wordMatcher = regexp.MustCompile("[\\p{L}\\d]+")

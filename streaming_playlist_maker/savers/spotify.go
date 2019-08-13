@@ -1,7 +1,7 @@
 package savers
 
 import (
-	"birnenlabs.com/spotify"
+	"birnenlabs.com/lib/spotify"
 	"context"
 	"fmt"
 	"github.com/golang/glog"

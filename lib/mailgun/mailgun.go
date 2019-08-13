@@ -1,8 +1,8 @@
 package mailgun
 
 import (
-	"birnenlabs.com/conf"
-	"birnenlabs.com/ratelimit"
+	"birnenlabs.com/lib/conf"
+	"birnenlabs.com/lib/ratelimit"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"

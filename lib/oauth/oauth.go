@@ -2,14 +2,13 @@
 package oauth
 
 import (
-	"birnenlabs.com/conf"
+	"birnenlabs.com/lib/conf"
 	"context"
 	"fmt"
+	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"net/http"
 	"os"
-
-	"github.com/golang/glog"
 )
 
 type OAuth struct {

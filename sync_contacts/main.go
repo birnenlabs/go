@@ -1,9 +1,9 @@
 package main
 
 import (
-	"birnenlabs.com/automate"
-	"birnenlabs.com/conf"
-	"birnenlabs.com/gcontacts"
+	"birnenlabs.com/lib/automate"
+	"birnenlabs.com/lib/conf"
+	"birnenlabs.com/lib/gcontacts"
 	"context"
 	"flag"
 	"fmt"

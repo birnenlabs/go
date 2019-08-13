@@ -1,8 +1,8 @@
 package main
 
 import (
-	"birnenlabs.com/automate"
-	"birnenlabs.com/conf"
+	"birnenlabs.com/lib/automate"
+	"birnenlabs.com/lib/conf"
 	"birnenlabs.com/streaming_playlist_maker/savers"
 	"birnenlabs.com/streaming_playlist_maker/sources"
 	"context"

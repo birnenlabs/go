@@ -1,7 +1,7 @@
 package sources
 
 import (
-	"birnenlabs.com/ratelimit"
+	"birnenlabs.com/lib/ratelimit"
 	"bufio"
 	"context"
 	"fmt"

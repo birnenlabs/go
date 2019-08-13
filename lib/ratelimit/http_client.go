@@ -1,12 +1,11 @@
 package ratelimit
 
 import (
+	"github.com/golang/glog"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/golang/glog"
 )
 
 // Interface of client that is accepted by this class. http.Client is satisfying these dependencies.

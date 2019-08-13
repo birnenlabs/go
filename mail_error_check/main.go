@@ -1,9 +1,9 @@
 package main
 
 import (
-	"birnenlabs.com/automate"
-	"birnenlabs.com/conf"
-	"birnenlabs.com/mailgun"
+	"birnenlabs.com/lib/automate"
+	"birnenlabs.com/lib/conf"
+	"birnenlabs.com/lib/mailgun"
 	"flag"
 	"fmt"
 	"github.com/golang/glog"

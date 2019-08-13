@@ -57,7 +57,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"birnenlabs.com/oauth"
+	"birnenlabs.com/lib/oauth"
 )
 
 func main() {

@@ -1,7 +1,7 @@
 package automate
 
 import (
-	"birnenlabs.com/conf"
+	"birnenlabs.com/lib/conf"
 	"bytes"
 	"fmt"
 	"github.com/golang/glog"
