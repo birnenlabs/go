@@ -23,11 +23,17 @@ const (
 		}`
 	url               = "https://llamalab.com/automate/cloud/message"
 	allowedCharacters = `[^a-zA-Z0-9 ~!@#$%^&*()_+=\[\]{}"'|\\-]+`
+	pUrgent           = 1
+	pNormal           = 0
 )
 
 type CloudMessage struct {
+	// Secret and DefaultTo can be stored in config. Secret is required.
 	Secret    string
 	DefaultTo string
+
+	// appName can be set to use formatted version
+	appName string
 }
 
 func Create() (*CloudMessage, error) {
@@ -37,31 +43,67 @@ func Create() (*CloudMessage, error) {
 		return nil, err
 	}
 
+	if len(result.Secret) == 0 {
+		return nil, fmt.Errorf("Secret has to be set.")
+	}
+
 	return &result, nil
+}
+
+// When appName is set, the formatted payload will be used:
+// $from [$hostname]|$priority|$message
+func (c *CloudMessage) UseFormattedPayload(appName string) {
+	if c != nil {
+		c.appName = appName
+	}
 }
 
 // All the methods of CloudMessage should support nil pointer!
 
-func (c *CloudMessage) SendCloudMessageToDefault(payload string) error {
-	if c == nil {
-		glog.Errorf("Could not send: %q.", payload)
-		return fmt.Errorf("%q not sent", payload)
-	}
-
-	return c.SendCloudMessage(c.DefaultTo, payload)
+// Sends message to the default recipient.
+func (c *CloudMessage) Send(msg string) {
+	c.send(pNormal, "", msg)
 }
 
-func (c *CloudMessage) SendCloudMessage(to string, payload string) error {
+// Sends message to the default recipient with priority set to urgent.
+// Note: Formatted payload with priority is supported only if UseFormattedPayload was called.
+func (c *CloudMessage) SendUrgent(msg string) {
+	c.send(pUrgent, "", msg)
+}
+
+// Sends message to the custom recipient.
+func (c *CloudMessage) SendTo(to string, msg string) {
+	c.send(pNormal, to, msg)
+}
+
+// Sends message to the custom recipient with priority set to urgent.
+// Note: Formatted payload with priority is supported only if UseFormattedPayload was called.
+func (c *CloudMessage) SendUrgentTo(to string, msg string) {
+	c.send(pUrgent, to, msg)
+}
+
+func (c *CloudMessage) send(priority int, to string, msg string) {
 	if c == nil {
-		glog.Errorf("Could not send: %q.", payload)
-		return fmt.Errorf("%q not sent", payload)
+		glog.Errorf("Cloud message not initialized! NOT SENT: %q.", msg)
+		return
+	}
+
+	// Use DefaultTo if not set.
+	if len(to) == 0 {
+		to = c.DefaultTo
+	}
+
+	// Use formatted payload when appName is set.
+	if len(c.appName) > 0 {
+		msg = createFormattedPayload(c.appName, msg, priority)
 	}
 
 	// Replace newlines and remove non printable characters
-	payload = strings.Replace(payload, "\n", `\n`, -1)
+	payload := strings.Replace(msg, "\n", `\n`, -1)
 	reg, err := regexp.Compile(allowedCharacters)
 	if err != nil {
-		return err
+		glog.Errorf("Could not send cloud message: %v.", err)
+		return
 	}
 	payload = reg.ReplaceAllString(payload, " ")
 
@@ -72,24 +114,15 @@ func (c *CloudMessage) SendCloudMessage(to string, payload string) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		glog.Errorf("Could not send cloud message: %v.", err)
+		return
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
-		return nil
-	} else {
+	if resp.StatusCode != 200 {
 		body, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf(string(body))
+		glog.Errorf("Could not send cloud message, response:\n%v", string(body))
 	}
-}
-
-func (c *CloudMessage) SendFormattedCloudMessageToDefault(from string, msg string, priority int) error {
-	return c.SendCloudMessageToDefault(createFormattedPayload(from, msg, priority))
-}
-
-func (c *CloudMessage) SendFormattedCloudMessage(from string, to string, msg string, priority int) error {
-	return c.SendCloudMessage(to, createFormattedPayload(from, msg, priority))
 }
 
 func createFormattedPayload(from string, msg string, priority int) string {
