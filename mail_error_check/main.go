@@ -1,12 +1,11 @@
 package main
 
 import (
-	"birnenlabs.com/lib/automate"
+	glog "birnenlabs.com/lib/alog"
 	"birnenlabs.com/lib/conf"
 	"birnenlabs.com/lib/mailgun"
 	"flag"
 	"fmt"
-	"github.com/golang/glog"
 	"strings"
 	"time"
 )
@@ -26,19 +25,13 @@ func main() {
 	flag.Set("alsologtostderr", "true")
 	defer glog.Flush()
 
-	glog.Infof("Dry run mode: %v", *dryRun)
+	glog.UseFormattedPayload(appName)
 
-	// Create notifier first
-	cloudMessage, err := automate.Create()
-	if err != nil {
-		// Not exiting here, continue without cloud notifier.
-		glog.Errorf("Could not create cloud message: %v", err)
-	}
+	glog.Infof("Dry run mode: %v", *dryRun)
 
 	glog.Infof("Creating new mailgun instance")
 	m, err := mailgun.New()
 	if err != nil {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exit("Could not create mailgun instance:", err)
 	}
 
@@ -55,7 +48,6 @@ func main() {
 	// Process our events first...
 	err = processEvents(m, max(config.LastRun, now-oneMonth), now)
 	if err != nil {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exit("Could not process our emails", err)
 	}
 
@@ -66,12 +58,16 @@ func main() {
 	} else {
 		err = conf.SaveConfigToFile(appName, &config)
 		if err != nil {
-			cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 			glog.Errorf("Could not save last run time to file: %s", err)
 		}
 	}
 
-	cloudMessage.SendFormattedCloudMessageToDefault(appName, "Done", 0)
+	// now/60 == minutes from epoch
+	// 24 *60 == minutes in day
+	if (now/60)%(24*60) < 10 {
+		// Send cloud message only between 0:00 and 0:09
+		glog.InfoSend("Done")
+	}
 }
 
 func processEvents(m *mailgun.Mailgun, begin, end int64) error {

@@ -1,13 +1,12 @@
 package main
 
 import (
-	"birnenlabs.com/lib/automate"
+	glog "birnenlabs.com/lib/alog"
 	"birnenlabs.com/lib/conf"
 	"birnenlabs.com/lib/gcontacts"
 	"context"
 	"flag"
 	"fmt"
-	"github.com/golang/glog"
 )
 
 var configFlag = flag.String("config", "sync-contacts", "Configuration")
@@ -19,19 +18,13 @@ func main() {
 	flag.Set("alsologtostderr", "true")
 	defer glog.Flush()
 
+	glog.UseFormattedPayload(appName)
+
 	ctx := context.Background()
 
-	// Create notifier first
-	cloudMessage, err := automate.Create()
-	if err != nil {
-		// Not exiting here, continue without cloud notifier.
-		glog.Errorf("Could not create cloud message: %v", err)
-	}
-
 	var config Config
-	err = conf.LoadConfigFromJson(*configFlag, &config)
+	err := conf.LoadConfigFromJson(*configFlag, &config)
 	if err != nil {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exitf("Could not read configuration: %v", err)
 	}
 
@@ -39,7 +32,6 @@ func main() {
 	glog.Infof("Creating source connector: %v", config.Src.Config)
 	srcContacts, err := gcontacts.NewWithCustomConfig(ctx, config.Src.Config)
 	if err != nil {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exitf("Could not create source connector: %v", err)
 	}
 
@@ -49,7 +41,6 @@ func main() {
 		glog.Infof("Creating destination[%v] connector: %v", i, config.Dst[i].Config)
 		dstContacts[i], err = gcontacts.NewWithCustomConfig(ctx, config.Dst[i].Config)
 		if err != nil {
-			cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 			glog.Exitf("Could not destination connector: %v", err)
 		}
 
@@ -58,13 +49,11 @@ func main() {
 	// List source
 	srcFeed, err := srcContacts.ListContacts(ctx)
 	if err != nil {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exitf("Could not list contacts: %v", err)
 	}
 
 	srcMap, err := groupToMap(srcFeed.Entries, config.Src.Group)
 	if err != nil {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exitf("Could not list contacts: %v", err)
 	}
 
@@ -75,13 +64,11 @@ func main() {
 		// List destination
 		dstFeed, err := dstContacts[i].ListContacts(ctx)
 		if err != nil {
-			cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 			glog.Exitf("Could not list contacts: %v", err)
 		}
 
 		dstMap, err := groupToMap(dstFeed.Entries, config.Dst[i].Group)
 		if err != nil {
-			cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 			glog.Exitf("Could not list contacts: %v", err)
 		}
 
@@ -113,13 +100,11 @@ func main() {
 
 			deleteUrl := findDeleteUrl(v)
 			if len(deleteUrl) == 0 {
-				cloudMessage.SendFormattedCloudMessageToDefault(appName, "Could not delete contact with empty delete url", 1)
 				glog.Exitf("Delete url is empty, contact: %+v", v)
 			}
 
 			err = dstContacts[i].RemoveContact(ctx, deleteUrl)
 			if err != nil {
-				cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 				glog.Exitf("Could not remove contact: %v", err)
 			}
 		}
@@ -131,7 +116,6 @@ func main() {
 			entry := srcMap[k]
 			err = dstContacts[i].AddContact(ctx, createRequest(entry.Name.GivenName, entry.Name.FamilyName, config.Dst[i].Group, entry.PhoneNumbers[0].Value))
 			if err != nil {
-				cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 				glog.Exitf("Could not add contact: %v", err)
 			}
 		}
@@ -140,11 +124,11 @@ func main() {
 
 		// Notify if there were changes
 		if len(toAdd)+len(dstMap) > 0 {
-			cloudMessage.SendFormattedCloudMessageToDefault(appName, status, 1)
+			glog.InfoSendUrgent(status)
 		}
 	}
 
-	cloudMessage.SendFormattedCloudMessageToDefault(appName, "Done", 0)
+	glog.InfoSend("Done")
 }
 
 func groupToMap(entries []gcontacts.Entry, groupId string) (map[string]gcontacts.Entry, error) {

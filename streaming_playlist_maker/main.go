@@ -1,14 +1,13 @@
 package main
 
 import (
-	"birnenlabs.com/lib/automate"
+	glog "birnenlabs.com/lib/alog"
 	"birnenlabs.com/lib/conf"
 	"birnenlabs.com/streaming_playlist_maker/savers"
 	"birnenlabs.com/streaming_playlist_maker/sources"
 	"context"
 	"flag"
 	"fmt"
-	"github.com/golang/glog"
 	"os"
 	"os/signal"
 	"sync"
@@ -26,31 +25,23 @@ func main() {
 	defer glog.Flush()
 	ctx := context.Background()
 
-	// Create notifier first
-	cloudMessage, err := automate.Create()
-	if err != nil {
-		// Not exiting here, continue without cloud notifier.
-		glog.Errorf("Could not create cloud message: %v", err)
-	}
+	glog.UseFormattedPayload(appName)
 
 	var jobs []Job
-	err = conf.LoadConfigFromJson(*config, &jobs)
+	err := conf.LoadConfigFromJson(*config, &jobs)
 	if err != nil {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exit("Could not load config: ", err)
 	}
 	glog.V(3).Infof("Loaded configuration: %+v", jobs)
 
 	sourcesMap, saversMap, err := createSourcesAndSavers(ctx, jobs)
 	if err != nil {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exit("Could not create sources and savers: ", err)
 	}
 
 	glog.Infof("Cleaning savers")
 	err = cleanSavers(ctx, saversMap, jobs)
 	if err != nil {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
 		glog.Exit("Could not clean savers: ", err)
 	}
 
@@ -64,8 +55,7 @@ func main() {
 
 		err = stats.Init(conf.Name)
 		if err != nil {
-			cloudMessage.SendFormattedCloudMessageToDefault(appName, err.Error(), 1)
-			glog.Exitf("Could initialize stats")
+			glog.Exitf("Could initialize stats: %v", err)
 		}
 
 		wg.Add(1)
@@ -84,9 +74,9 @@ func main() {
 	issues := stats.FindIssues()
 	glog.Infof("Statistics:\n%v%v", issues, stats)
 
-	cloudMessage.SendFormattedCloudMessageToDefault(appName, "\n"+stats.String(), 0)
+	glog.InfoSend("\n" + stats.String())
 	if len(issues) > 0 {
-		cloudMessage.SendFormattedCloudMessageToDefault(appName, issues, 1)
+		glog.Error(issues)
 	}
 }
 
