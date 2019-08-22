@@ -16,6 +16,7 @@ type EventsResponse struct {
 }
 
 type Item struct {
+	Storage         Storage        `json:"storage"`
 	Severity        string         `json:"severity"`
 	DeliveryStatus  DeliveryStatus `json:"delivery-status"`
 	RecipientDomain string         `json:"recipient-domain"`
@@ -26,6 +27,10 @@ type Item struct {
 	Message         Message        `json:"message"`
 	Recipient       string         `json:"recipient"`
 	Event           string         `json:"event"`
+}
+
+type Storage struct {
+	Key string `json:"key"`
 }
 
 type DeliveryStatus struct {
@@ -72,11 +77,14 @@ type Paging struct {
 }
 
 type Email struct {
-	From      string
-	To        string
-	Subject   string
-	Text      string
-	Reference string
+	From      string `json:"From"`
+	To        string `json:"To"`
+	Subject   string `json:"Subject"`
+	Text      string `json:"body-plain"`
+	Reference string `json:"Message-Id"`
+
+	Cc  string
+	Bcc string
 }
 
 var emailRegexp = regexp.MustCompile(`<[^<>]*>`)
