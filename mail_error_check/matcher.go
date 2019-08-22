@@ -49,6 +49,7 @@ func setAndNotEqual(emptyOrString string, toCompare string) bool {
 
 // returns true if emptyOrString is set and does not match toCompare
 func setAndNotMatches(emptyOrString string, toCompare string) bool {
+	glog.V(2).Infof("Comparing: %q and %q.", emptyOrString, toCompare)
 	if len(emptyOrString) > 0 {
 		negateMatch := false
 		if emptyOrString[0] == '-' {

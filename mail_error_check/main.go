@@ -19,6 +19,7 @@ type State struct {
 }
 
 var dryRun = flag.Bool("dryrun", false, "Dry run")
+var minutes = flag.Int("minutes", 0, "Overwrite default time range with [now-minutes, now].")
 
 func main() {
 	flag.Parse()
@@ -52,8 +53,13 @@ func main() {
 	}
 
 	now := time.Now().Unix()
+	from := max(state.LastRun, now-oneMonth)
 
-	err = processEvents(m, config.Rules, max(state.LastRun, now-oneMonth), now)
+	if *minutes > 0 {
+		from = now - (int64)((*minutes)*60)
+	}
+
+	err = processEvents(m, config.Rules, from, now)
 
 	if err != nil {
 		glog.Exit("Could not process our emails", err)
@@ -141,7 +147,7 @@ func processEvents(m *mailgun.Mailgun, rules []Rule, begin, end int64) error {
 
 				if len(rule.Action.ForwardTo) > 0 {
 					if *dryRun {
-						glog.Infof("DRY RUN: would forward email.", item)
+						glog.Infof("DRY RUN: would forward email.")
 						glog.V(3).Infof("%+v", item)
 					} else {
 						err = m.Forward(item.Storage.Key, rule.Action.ForwardTo)
@@ -156,7 +162,9 @@ func processEvents(m *mailgun.Mailgun, rules []Rule, begin, end int64) error {
 				}
 			}
 		}
-		glog.V(1).Infof("Processed %s->%s, match: %v", item.From(), item.To(), matched)
+		if !matched {
+			glog.V(1).Infof("Not matched %s->%s", item.From(), item.To())
+		}
 	}
 
 	return nil
