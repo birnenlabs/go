@@ -14,7 +14,7 @@ const appName = "mail_error_check"
 const temporarySeverity = "temporary"
 const oneMonth = 30 * 24 * 3600
 
-type Config struct {
+type State struct {
 	LastRun int64
 }
 
@@ -36,27 +36,34 @@ func main() {
 	}
 
 	// Load configuration
-	var config Config
-	err = conf.LoadConfigFromFile(appName, &config)
+	var state State
+	err = conf.LoadConfigFromFile(appName, &state)
 	if err != nil {
 		// Not exiting here, let's just read all messages
 		glog.Warningf("Last run time not found (%s). Listing all messages.", err)
 	}
 
+	// Load rules
+	var config Config
+	err = conf.LoadConfigFromJson(appName, &config)
+	if err != nil {
+		// Not exiting here, let's just read all messages
+		glog.Warningf("Could not load config: %v.", err)
+	}
+
 	now := time.Now().Unix()
 
-	// Process our events first...
-	err = processEvents(m, max(config.LastRun, now-oneMonth), now)
+	err = processEvents(m, config.Rules, max(state.LastRun, now-oneMonth), now)
+
 	if err != nil {
 		glog.Exit("Could not process our emails", err)
 	}
 
-	// ...and save our events state
-	config.LastRun = now
+	state.LastRun = now
 	if *dryRun {
-		glog.Infof("DRY RUN: would save config: %+v", config)
+		glog.Infof("DRY RUN: would save state: %+v", state)
 	} else {
-		err = conf.SaveConfigToFile(appName, &config)
+		err = conf.SaveConfigToFile(appName, &state)
 		if err != nil {
 			glog.Errorf("Could not save last run time to file: %s", err)
 		}
@@ -70,7 +77,7 @@ func main() {
 	}
 }
 
-func processEvents(m *mailgun.Mailgun, begin, end int64) error {
+func processEvents(m *mailgun.Mailgun, rules []Rule, begin, end int64) error {
 	glog.Infof("Processing emails between %d and %d", begin, end)
 	items, err := m.ListAllEvents(begin, end)
 	if err != nil {
@@ -80,37 +87,76 @@ func processEvents(m *mailgun.Mailgun, begin, end int64) error {
 	for _, item := range items {
 		// Ignoring second and following attempts of temporary failure
 		if item.Severity == temporarySeverity && item.DeliveryStatus.AttemptNo > 1 {
-			glog.Infof("Ignoring %d attempt of %s error from: %s to: %s", item.DeliveryStatus.AttemptNo, temporarySeverity, item.From(), item.To())
+			glog.Infof("Ignore %s->%s: %d attempt, severity: %s", item.From(), item.To(), item.DeliveryStatus.AttemptNo, temporarySeverity)
 			continue
 		}
 
-		email := mailgun.Email{
-			From:      m.MailerDaemon(),
-			Text:      generateBounceEmailText(item),
-			Subject:   "Re: " + item.Message.Headers.Subject,
-			Reference: "<" + item.Message.Headers.MessageId + ">",
-		}
+		matched := false
+		for _, rule := range rules {
+			if matches(item, rule.Match) {
+				glog.Infof("Match %s->%s: %v -> %v", item.From(), item.To(), rule.Match, rule.Action)
+				matched = true
 
-		if m.IsInMyDomain(item.From()) {
-			// Always inform about actions originating in own domain
-			email.To = item.From()
-		} else if item.Event == mailgun.EventFailed {
-			// Send email to postmaster for other domain's failures
-			email.To = m.CreateAddress("postmaster")
-		} else {
-			// Ignore everything else
-			glog.Infof("Ignoring stored/rejected event not originating from domain. From %s, To: %s", item.From(), item.To())
-			continue
-		}
+				if rule.Action.NotifyPostmaster {
 
-		if *dryRun {
-			glog.Infof("DRY RUN: would send email:\n %+v", email)
-		} else {
-			err = m.SendBounceEmail(email, item.To() /*failedRecipient*/)
-			if err != nil {
-				return err
+					email := mailgun.Email{
+						From:      m.MailerDaemon(),
+						To:        m.CreateAddress("postmaster"),
+						Text:      generateBounceEmailText(item),
+						Subject:   "Re: " + item.Message.Headers.Subject,
+						Reference: "<" + item.Message.Headers.MessageId + ">",
+					}
+
+					if *dryRun {
+						glog.Infof("DRY RUN: would send email")
+						glog.V(3).Infof("%+v", email)
+					} else {
+						err = m.SendBounceEmail(email, item.To() /*failedRecipient*/)
+						if err != nil {
+							return err
+						}
+					}
+				}
+
+				if rule.Action.Bounce {
+					email := mailgun.Email{
+						From:      m.MailerDaemon(),
+						To:        item.From(),
+						Text:      generateBounceEmailText(item),
+						Subject:   "Re: " + item.Message.Headers.Subject,
+						Reference: "<" + item.Message.Headers.MessageId + ">",
+					}
+
+					if *dryRun {
+						glog.Infof("DRY RUN: would send email")
+						glog.V(3).Infof("%+v", email)
+
+					} else {
+						err = m.SendBounceEmail(email, item.To() /*failedRecipient*/)
+						if err != nil {
+							return err
+						}
+					}
+				}
+
+				if len(rule.Action.ForwardTo) > 0 {
+					if *dryRun {
+						glog.Infof("DRY RUN: would forward email.", item)
+						glog.V(3).Infof("%+v", item)
+					} else {
+						err = m.Forward(item.Storage.Key, rule.Action.ForwardTo)
+						if err != nil {
+							glog.Errorf("Could not forward email: %v", err)
+						}
+					}
+				}
+
+				if rule.Action.StopProcessing {
+					break
+				}
 			}
 		}
+		glog.V(1).Infof("Processed %s->%s, match: %v", item.From(), item.To(), matched)
 	}
 
 	return nil
