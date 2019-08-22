@@ -8,7 +8,7 @@ import (
 
 var wordMatcher = regexp.MustCompile("[\\p{L}\\d]+")
 
-var terribleSongNames = []string{
+var TerribleSongNames = []string{
 	"acapella",
 	"acappella",
 	"as made famous",
@@ -59,7 +59,7 @@ func CalculateMatchRatio(radio string, spotify *ImmutableSpotifyTrack) int {
 	}
 
 	spotifyString := strings.ToLower(spotify.String())
-	for _, terribleName := range terribleSongNames {
+	for _, terribleName := range TerribleSongNames {
 		if strings.Contains(spotifyString, terribleName) {
 			glog.V(3).Infof("Terrible name: %v", spotify)
 			return 0
