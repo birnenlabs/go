@@ -80,26 +80,18 @@ func (w *webSource) doStartHistory(song chan<- Song, urlBase string, start time.
 
 	t := end
 	for !t.Before(start) {
-		// Skip christmas songs, but still generate next date
-		var nextTs time.Time
-		if int(t.Month()) == 12 {
-			_, nextTs = w.generateHistoryUrl(urlBase, t)
-		} else {
-			var url string
-			url, nextTs = w.generateHistoryUrl(urlBase, t)
-
-			songs, err := w.findSongsInPage(url)
-			if err != nil {
-				song <- Song{
-					Error: err,
-				}
+		url, nextTs := w.generateHistoryUrl(urlBase, t)
+		songs, err := w.findSongsInPage(url)
+		if err != nil {
+			song <- Song{
+				Error: err,
 			}
-			glog.V(2).Infof("%v returned %v songs", url, len(songs))
-			for _, s := range songs {
-				song <- Song{
-					ArtistTitle: s,
-					Error:       nil,
-				}
+		}
+		glog.V(2).Infof("%v returned %v songs", url, len(songs))
+		for _, s := range songs {
+			song <- Song{
+				ArtistTitle: s,
+				Error:       nil,
 			}
 		}
 		if !nextTs.Before(t) {

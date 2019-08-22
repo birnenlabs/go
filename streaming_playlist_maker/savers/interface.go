@@ -9,8 +9,9 @@ import (
 )
 
 type SaverJob struct {
-	Playlist  string
-	SaverType string
+	Playlist           string
+	SaverType          string
+	AllowChristmasSong bool
 }
 
 type Status struct {
@@ -33,6 +34,8 @@ type CleanStatus struct {
 	Duplicates int
 	// List of possible duplicates that were not removed
 	Similar []*SimilarTrack
+	// Number of terrible song names that were removed
+	Terrible int
 }
 
 type SimilarTrack struct {
@@ -69,6 +72,8 @@ func (c *CleanStatus) String() string {
 	buf.WriteString(strconv.Itoa(c.UnavailableReplaced))
 	buf.WriteString("\nRemoved duplicates:   ")
 	buf.WriteString(strconv.Itoa(c.Duplicates))
+	buf.WriteString("\nRemoved terrible:   ")
+	buf.WriteString(strconv.Itoa(c.Terrible))
 	for _, s := range c.Similar {
 		buf.WriteString("\n")
 		buf.WriteString(strconv.Itoa(s.AvgMatchRatio))

@@ -5,12 +5,15 @@ import (
 	"context"
 	"fmt"
 	"github.com/golang/glog"
+	"strings"
 )
 
 const validMatch = 75
 
 // TODO: this should be in config.
 const spotifyMarket = "PL"
+
+var christmasSongNames = []string{"christmas", "xmas", "x-mas"}
 
 type spotifySaver struct {
 	spotify  *spotify.Spotify
@@ -36,6 +39,11 @@ func (s *spotifySaver) Clean(ctx context.Context, conf SaverJob) (*CleanStatus, 
 		return nil, err
 	}
 
+	terrible, err := s.removeTerribleSongs(ctx, conf.Playlist, conf.AllowChristmasSong)
+	if err != nil {
+		return nil, err
+	}
+
 	duplicates, err := s.findDuplicatesById(ctx, conf.Playlist)
 	if err != nil {
 		return nil, err
@@ -51,6 +59,7 @@ func (s *spotifySaver) Clean(ctx context.Context, conf SaverJob) (*CleanStatus, 
 		UnavailableReplaced: unplayable.UnavailableReplaced,
 		Duplicates:          duplicates,
 		Similar:             similarTracks,
+		Terrible:            terrible,
 	}, nil
 }
 
@@ -90,6 +99,16 @@ func (s *spotifySaver) Save(ctx context.Context, conf SaverJob, artistTitle stri
 		return nil, err
 	}
 	newTrack, newTrackMatch := s.findBestMatch(newTracks, artistTitle)
+
+	if !conf.AllowChristmasSong {
+		artistTitleLower := strings.ToLower(newTrack.String())
+		for _, christmasName := range christmasSongNames {
+			if strings.Contains(artistTitleLower, christmasName) {
+				glog.V(1).Infof("Ignoring christmas song: %q", artistTitle)
+				newTrackMatch = -1
+			}
+		}
+	}
 
 	// if new track is a good match add it to the playlist
 	if newTrackMatch >= validMatch {
@@ -194,6 +213,34 @@ func (s *spotifySaver) replaceUnplayable(ctx context.Context, playlistId string)
 		Unavailable:         unavailable,
 		UnavailableReplaced: unavailableReplaced,
 	}, nil
+}
+
+func (s *spotifySaver) removeTerribleSongs(ctx context.Context, playlistId string, allowChristmasSong bool) (int, error) {
+	tracks, err := s.spotify.ListPlaylist(ctx, playlistId)
+	if err != nil {
+		return 0, err
+	}
+
+	terribleSongNames := append([]string(nil), spotify.TerribleSongNames...)
+	if !allowChristmasSong {
+		terribleSongNames = append(terribleSongNames, christmasSongNames...)
+	}
+
+	removed := 0
+	for _, t := range tracks {
+		artistTitle := strings.ToLower(t.String())
+		for _, terribleName := range terribleSongNames {
+			if strings.Contains(artistTitle, terribleName) {
+				glog.V(1).Infof("[%v] Removing terrible song: %#v", playlistId, t)
+				err = s.spotify.RemoveFromPlaylist(ctx, playlistId, t)
+				if err != nil {
+					return 0, fmt.Errorf("error while removing: %q when removing wrong song %#v", err, t)
+				}
+				removed++
+			}
+		}
+	}
+	return removed, nil
 }
 
 func (s *spotifySaver) findDuplicatesById(ctx context.Context, playlistId string) (int, error) {
