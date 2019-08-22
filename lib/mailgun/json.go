@@ -77,11 +77,13 @@ type Paging struct {
 }
 
 type Email struct {
-	From      string `json:"From"`
-	To        string `json:"To"`
-	Subject   string `json:"Subject"`
-	Text      string `json:"body-plain"`
-	Reference string `json:"Message-Id"`
+	From       string `json:"From"`
+	To         string `json:"To"`
+	Subject    string `json:"Subject"`
+	Text       string `json:"body-plain"`
+	References string `json:"References"`
+	MessageId  string `json:"Message-Id"`
+	InReplyTo  string `json:"In-Reply-To"`
 
 	Cc  string
 	Bcc string

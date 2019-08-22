@@ -90,9 +90,9 @@ func (m *Mailgun) Forward(storageKey string, to string) error {
 	email.To = to
 
 	if !m.IsInMyDomain(email.To) {
-                // Send forwards to our domain only.
-                return fmt.Errorf("Forwards should be sent to own domain only")
-        }
+		// Send forwards to our domain only.
+		return fmt.Errorf("Forwards should be sent to own domain only")
+	}
 
 	return m.SendEmail(*email)
 }
@@ -198,9 +198,12 @@ func createPayload(email Email) url.Values {
 		payload.Add("bcc", email.Bcc)
 	}
 
-	if len(email.Reference) > 0 {
-		payload.Add("h:In-Reply-To", email.Reference)
-		payload.Add("h:References", email.Reference)
+	if len(email.References) > 0 {
+		payload.Add("h:References", email.References)
+	}
+
+	if len(email.InReplyTo) > 0 {
+		payload.Add("h:In-Reply-To", email.InReplyTo)
 	}
 
 	return payload

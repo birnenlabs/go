@@ -106,11 +106,12 @@ func processEvents(m *mailgun.Mailgun, rules []Rule, begin, end int64) error {
 				if rule.Action.NotifyPostmaster {
 
 					email := mailgun.Email{
-						From:      m.MailerDaemon(),
-						To:        m.CreateAddress("postmaster"),
-						Text:      generateBounceEmailText(item),
-						Subject:   "Re: " + item.Message.Headers.Subject,
-						Reference: "<" + item.Message.Headers.MessageId + ">",
+						From:       m.MailerDaemon(),
+						To:         m.CreateAddress("postmaster"),
+						Text:       generateBounceEmailText(item),
+						Subject:    "Re: " + item.Message.Headers.Subject,
+						References: "<" + item.Message.Headers.MessageId + ">",
+						InReplyTo:  "<" + item.Message.Headers.MessageId + ">",
 					}
 
 					if *dryRun {
@@ -126,11 +127,12 @@ func processEvents(m *mailgun.Mailgun, rules []Rule, begin, end int64) error {
 
 				if rule.Action.Bounce {
 					email := mailgun.Email{
-						From:      m.MailerDaemon(),
-						To:        item.From(),
-						Text:      generateBounceEmailText(item),
-						Subject:   "Re: " + item.Message.Headers.Subject,
-						Reference: "<" + item.Message.Headers.MessageId + ">",
+						From:       m.MailerDaemon(),
+						To:         item.From(),
+						Text:       generateBounceEmailText(item),
+						Subject:    "Re: " + item.Message.Headers.Subject,
+						References: "<" + item.Message.Headers.MessageId + ">",
+						InReplyTo:  "<" + item.Message.Headers.MessageId + ">",
 					}
 
 					if *dryRun {
