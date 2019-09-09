@@ -1,0 +1,12 @@
+package main
+
+const rDateTmpl = "RDATE;TZID=%v;VALUE=DATE:%04d%02d%02d\n"
+
+const icalTmpl = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART;TZID=%v;VALUE=DATE:%v
+SUMMARY:%v
+%vEND:VEVENT
+END:VCALENDAR
+`
