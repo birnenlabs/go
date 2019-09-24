@@ -11,6 +11,9 @@ func matches(item mailgun.Item, match Match) bool {
 	if setAndNotEqual(match.Event, item.Event) {
 		return false
 	}
+	if setAndNotEqual(match.Severity, item.Severity) {
+		return false
+	}
 	if setAndNotMatches(match.To, item.To()) {
 		return false
 	}
@@ -24,6 +27,13 @@ func matches(item mailgun.Item, match Match) bool {
 		return false
 	}
 	if setAndNotMatches(match.Headers.Subject, item.Message.Headers.Subject) {
+		return false
+	}
+	if match.Attempt > 0 && item.DeliveryStatus.AttemptNo != match.Attempt {
+		return false
+	}
+	if match.Attempt < 0 && item.DeliveryStatus.AttemptNo == -match.Attempt {
+		// Let's treat less than zero as negation
 		return false
 	}
 

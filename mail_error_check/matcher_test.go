@@ -32,6 +32,23 @@ func TestMatches(t *testing.T) {
 		},
 		{
 			match: Match{
+				Severity: "permanent",
+			},
+			item: mailgun.Item{
+				Severity: "permanent",
+			},
+		},
+		{
+			match: Match{
+				Severity: "-permanent",
+			},
+			item: mailgun.Item{
+				// Matches as "-" in the filter is negation.
+				Severity: "-permanent",
+			},
+		},
+		{
+			match: Match{
 				To: "to",
 			},
 			item: mailgun.Item{
@@ -208,6 +225,26 @@ func TestMatches(t *testing.T) {
 				},
 			},
 		},
+		{
+			match: Match{
+				Attempt: 1,
+			},
+			item: mailgun.Item{
+				DeliveryStatus: mailgun.DeliveryStatus{
+					AttemptNo: 1,
+				},
+			},
+		},
+		{
+			match: Match{
+				Attempt: -1,
+			},
+			item: mailgun.Item{
+				DeliveryStatus: mailgun.DeliveryStatus{
+					AttemptNo: 2,
+				},
+			},
+		},
 	} {
 		if !matches(s.item, s.match) {
 			t.Errorf("failed item: %+v, match: %+v ", s.item, s.match)
@@ -222,6 +259,22 @@ func TestDoesntMatch(t *testing.T) {
 				Event: "event",
 			},
 			item: mailgun.Item{},
+		},
+		{
+			match: Match{
+				Severity: "-permanent",
+			},
+			item: mailgun.Item{
+				Severity: "permanent",
+			},
+		},
+		{
+			match: Match{
+				Severity: "permanent",
+			},
+			item: mailgun.Item{
+				Severity: "something else",
+			},
 		},
 		{
 			match: Match{
@@ -400,6 +453,26 @@ func TestDoesntMatch(t *testing.T) {
 					Headers: mailgun.Headers{
 						Subject: "subject",
 					},
+				},
+			},
+		},
+		{
+			match: Match{
+				Attempt: 1,
+			},
+			item: mailgun.Item{
+				DeliveryStatus: mailgun.DeliveryStatus{
+					AttemptNo: 2,
+				},
+			},
+		},
+		{
+			match: Match{
+				Attempt: -1,
+			},
+			item: mailgun.Item{
+				DeliveryStatus: mailgun.DeliveryStatus{
+					AttemptNo: 1,
 				},
 			},
 		},

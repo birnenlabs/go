@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"strconv"
 )
 
 type Config struct {
@@ -17,10 +18,14 @@ type Rule struct {
 type Match struct {
 	// failed, rejected, delivered etc. - the same as mailgun api
 	Event string
+	// temporary, permanent - currently set for failed events only
+	Severity string
 	// regexp to match email address of message recipient
 	To string
 	// regexp to match email address of message sender
-	From    string
+	From string
+	// asttempt number from the event
+	Attempt int
 	Headers Headers
 }
 
@@ -52,6 +57,11 @@ func (m Match) String() string {
 		b.WriteString(m.Event)
 		b.WriteString("' ")
 	}
+	if len(m.Severity) > 0 {
+		b.WriteString("Severity: '")
+		b.WriteString(m.Severity)
+		b.WriteString("' ")
+	}
 	if len(m.To) > 0 {
 		b.WriteString("To: '")
 		b.WriteString(m.To)
@@ -60,6 +70,11 @@ func (m Match) String() string {
 	if len(m.From) > 0 {
 		b.WriteString("From: '")
 		b.WriteString(m.From)
+		b.WriteString("' ")
+	}
+	if m.Attempt != 0 {
+		b.WriteString("Attempt: '")
+		b.WriteString(strconv.Itoa(m.Attempt))
 		b.WriteString("' ")
 	}
 	b.WriteString("Headers: ")

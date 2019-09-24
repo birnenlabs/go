@@ -11,7 +11,6 @@ import (
 )
 
 const appName = "mail_error_check"
-const temporarySeverity = "temporary"
 const oneMonth = 30 * 24 * 3600
 
 type State struct {
@@ -91,12 +90,6 @@ func processEvents(m *mailgun.Mailgun, rules []Rule, begin, end int64) error {
 	}
 
 	for _, item := range items {
-		// Ignoring second and following attempts of temporary failure
-		if item.Severity == temporarySeverity && item.DeliveryStatus.AttemptNo > 1 {
-			glog.Infof("Ignore %s->%s: %d attempt, severity: %s", item.From(), item.To(), item.DeliveryStatus.AttemptNo, temporarySeverity)
-			continue
-		}
-
 		matched := false
 		for _, rule := range rules {
 			if matches(item, rule.Match) {
@@ -173,23 +166,25 @@ func processEvents(m *mailgun.Mailgun, rules []Rule, begin, end int64) error {
 }
 
 func generateBounceEmailText(item mailgun.Item) string {
-	isTemp := (item.Severity == temporarySeverity)
+	result := fmt.Sprintf("Mail Status: %s %s\n\nThis is an automatically generated Delivery Status Notification.\n\n", strings.Title(item.Event), strings.Title(item.Severity))
 
-	result := fmt.Sprintf("Mail Delivery %s Failure.\n\nThis is an automatically generated Delivery Status Notification.\n\n", strings.Title(item.Severity))
-
-	if isTemp {
-		result = result + "THIS IS A WARNING MESSAGE ONLY.\nYOU DO NOT NEED TO RESEND YOUR MESSAGE.\nSERVER WILL RETRY FOR THE NEXT 12 HOURS.\n\n"
+	switch item.Event {
+	case "delivered":
+		result = result + fmt.Sprintf("The following message was delivered after %d attempts:\n\n", item.DeliveryStatus.AttemptNo)
+	case "failed":
+		if item.Severity == "temporary" {
+			result = result + "THIS IS A WARNING MESSAGE ONLY.\nYOU DO NOT NEED TO RESEND YOUR MESSAGE.\nSERVER WILL RETRY FOR THE NEXT 12 HOURS.\n\n"
+			result = result + fmt.Sprintf("Delivery of the following message has been delayed:\n\n")
+		} else {
+			result = result + fmt.Sprintf("Delivery of the following message failed permanently after %d attempts:\n\n", item.DeliveryStatus.AttemptNo)
+		}
+	default:
+		result = result + fmt.Sprintf("The following message has status: %s:\n\n", item.Event)
 	}
 
-	result = result + fmt.Sprintf("Delivery of the following message:\n\n\tFrom: %s\n\tTo: %s\n\n", item.From(), item.To())
+	result = result + fmt.Sprintf("\tFrom: %s\n\tTo: %s\n\n", item.From(), item.To())
 
-	if isTemp {
-		result = result + "has been delayed.\n\n\nTechnical details:\n"
-	} else {
-		result = result + fmt.Sprintf("failed permanently after %d attempts.\n\n\nTechnical details:\n", item.DeliveryStatus.AttemptNo)
-	}
-
-	result = result + fmt.Sprintf("Timestamp: %s\nSeverity: %s\nSMTP code: %d\nReason: %s\n\n", time.Unix(int64(item.Timestamp), 0).UTC(), item.Severity, item.DeliveryStatus.Code, item.Reason)
+	result = result + fmt.Sprintf("-- \nTechnical details:\nTimestamp: %s\nSeverity: %s\nSMTP code: %d\nReason: %s\n\n", time.Unix(int64(item.Timestamp), 0).UTC(), item.Severity, item.DeliveryStatus.Code, item.Reason)
 	if len(item.DeliveryStatus.Message) > 0 {
 		result = result + item.DeliveryStatus.Message + "\n\n"
 	}
