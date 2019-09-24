@@ -29,6 +29,7 @@ const (
 
 type CloudMessage struct {
 	// Secret and DefaultTo can be stored in config. Secret is required.
+	// https://llamalab.com/automate/cloud/ - generate secret.
 	Secret    string
 	DefaultTo string
 
