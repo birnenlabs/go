@@ -18,6 +18,7 @@ import (
 const appName = "Streaming playlist maker"
 
 var config = flag.String("config", "streaming-playlist-maker", "Configuration")
+var skipCleaning = flag.Bool("skip-cleaning", false, "If true cleaning of playlist will be skipped")
 
 func main() {
 	flag.Parse()
@@ -39,10 +40,14 @@ func main() {
 		glog.Exit("Could not create sources and savers: ", err)
 	}
 
-	glog.Infof("Cleaning savers")
-	err = cleanSavers(ctx, saversMap, jobs)
-	if err != nil {
-		glog.Exit("Could not clean savers: ", err)
+	if *skipCleaning {
+		glog.Warningf("Skipping cleaning saver")
+	} else {
+		glog.Infof("Cleaning savers")
+		err = cleanSavers(ctx, saversMap, jobs)
+		if err != nil {
+			glog.Exit("Could not clean savers: ", err)
+		}
 	}
 
 	glog.Infof("Starting jobs")
