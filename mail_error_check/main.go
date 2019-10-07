@@ -184,7 +184,7 @@ func generateBounceEmailText(item mailgun.Item) string {
 
 	result = result + fmt.Sprintf("\tFrom: %s\n\tTo: %s\n\n", item.From(), item.To())
 
-	result = result + fmt.Sprintf("-- \nTechnical details:\nTimestamp: %s\nSeverity: %s\nSMTP code: %d\nReason: %s\n\n", time.Unix(int64(item.Timestamp), 0).UTC(), item.Severity, item.DeliveryStatus.Code, item.Reason)
+	result = result + fmt.Sprintf("Technical details:\n-- \nTimestamp: %s\nSeverity: %s\nSMTP code: %d\nReason: %s\n\n", time.Unix(int64(item.Timestamp), 0).UTC(), item.Severity, item.DeliveryStatus.Code, item.Reason)
 	if len(item.DeliveryStatus.Message) > 0 {
 		result = result + item.DeliveryStatus.Message + "\n\n"
 	}
