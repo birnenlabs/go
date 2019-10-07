@@ -249,6 +249,10 @@ func (s *spotifySaver) findDuplicatesById(ctx context.Context, playlistId string
 		return 0, err
 	}
 
+	if len(tracks) <= 1 {
+		return 0, nil
+	}
+
 	toRemove := make(map[string]*spotify.ImmutableSpotifyTrack)
 	for i, t1 := range tracks[0 : len(tracks)-1] {
 		for _, t2 := range tracks[i+1:] {
@@ -284,6 +288,11 @@ func (s *spotifySaver) findDuplicatesByName(ctx context.Context, playlistId stri
 	}
 
 	result := make([]*SimilarTrack, 0)
+
+	if len(tracks) <= 1 {
+		return result, nil
+	}
+
 	for i, t1 := range tracks[0 : len(tracks)-1] {
 		for _, t2 := range tracks[i+1:] {
 			match12 := spotify.CalculateMatchRatio(t1.String(), t2)
