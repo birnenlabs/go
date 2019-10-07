@@ -2,10 +2,10 @@ package sources
 
 import (
 	"birnenlabs.com/lib/ratelimit"
-	"bufio"
 	"context"
 	"fmt"
 	"github.com/golang/glog"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -16,11 +16,17 @@ type webSource struct {
 	findSongsInHtml func(line string) []string
 	// Generates url for a given date and the previous valid timepoint (e.g. if page generates new content every week, returned time should be t minus week).
 	generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)
+	delimiter          string
 }
 
-func newWebSource(findSongsInHtml func(line string) []string, generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)) *webSource {
+func newWebSource(findSongsInHtml func(html string) []string, generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)) *webSource {
+	return newWebSourcePage("\n", findSongsInHtml, generateHistoryUrl)
+}
+
+func newWebSourcePage(delimiter string, findSongsInHtml func(html string) []string, generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)) *webSource {
 	return &webSource{
 		findSongsInHtml:    findSongsInHtml,
+		delimiter:          delimiter,
 		generateHistoryUrl: generateHistoryUrl,
 		httpClient:         ratelimit.New(&http.Client{}, time.Second*3),
 	}
@@ -109,19 +115,19 @@ func (w *webSource) findSongsInPage(url string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
 	var result []string
-
-	reader := bufio.NewReader(resp.Body)
-	for err == nil {
-		var b []byte
-		b, err = reader.ReadBytes('\n')
-		s := string(b)
-
+	for _, s := range strings.Split(string(body), w.delimiter) {
 		found := w.findSongsInHtml(s)
 		result = append(result, found...)
 	}
+
 	glog.V(3).Infof("%q returned %v results", url, len(result))
 	if len(result) == 0 {
 		return nil, fmt.Errorf("No results for %q", url)

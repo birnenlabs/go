@@ -31,7 +31,7 @@ func (b *billboardNewSource) findSongsInHtml(s string) []string {
 	if len(s) > 5000 {
 		charts := strings.Index(s, dataChartsJson)
 		if charts != -1 {
-			jsonString := html.UnescapeString(s[charts+len(dataChartsJson) : len(s)-2])
+			jsonString := html.UnescapeString(s[charts+len(dataChartsJson) : len(s)-1])
 			glog.V(3).Infof("Found json: %s...", jsonString[:5000])
 
 			songs := make([]billboardJson, 0)
