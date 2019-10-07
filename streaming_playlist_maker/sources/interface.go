@@ -35,6 +35,8 @@ func Create(ctx context.Context, sourceType string) (SongSource, error) {
 		return newOdsluchane(), nil
 	case "billboard":
 		return newBillboard(), nil
+	case "billboard-new":
+		return newBillboardNew(), nil
 	default:
 		return nil, fmt.Errorf("Invalid source type definition (%v).", sourceType)
 	}
