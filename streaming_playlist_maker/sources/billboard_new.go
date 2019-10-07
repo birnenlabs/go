@@ -28,23 +28,25 @@ func newBillboardNew() *billboardNewSource {
 }
 
 func (b *billboardNewSource) findSongsInHtml(s string) []string {
-	charts := strings.Index(s, dataChartsJson)
-	if charts != -1 {
-		jsonString := html.UnescapeString(s[charts+len(dataChartsJson) : len(s)-2])
-		glog.V(3).Infof("Found json: %s...", jsonString[:5000])
+	if len(s) > 5000 {
+		charts := strings.Index(s, dataChartsJson)
+		if charts != -1 {
+			jsonString := html.UnescapeString(s[charts+len(dataChartsJson) : len(s)-2])
+			glog.V(3).Infof("Found json: %s...", jsonString[:5000])
 
-		songs := make([]billboardJson, 0)
-		decoder := json.NewDecoder(strings.NewReader(jsonString))
-		err := decoder.Decode(&songs)
-		if err != nil {
-			glog.Errorf("Could not decode json: %v.", err)
+			songs := make([]billboardJson, 0)
+			decoder := json.NewDecoder(strings.NewReader(jsonString))
+			err := decoder.Decode(&songs)
+			if err != nil {
+				glog.Errorf("Could not decode json: %v.", err)
+			}
+			glog.V(3).Infof("Found %d songs: %v", len(songs), songs)
+			result := make([]string, 0)
+			for _, s := range songs {
+				result = append(result, s.String())
+			}
+			return result
 		}
-		glog.V(3).Infof("Found %d songs: %v", len(songs), songs)
-		result := make([]string, 0)
-		for _, s := range songs {
-			result = append(result, s.String())
-		}
-		return result
 	}
 	return []string{}
 }
