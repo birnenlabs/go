@@ -22,7 +22,7 @@ const (
 		"payload":  "%v"
 		}`
 	url               = "https://llamalab.com/automate/cloud/message"
-	allowedCharacters = `[^a-zA-Z0-9 ~!@#$%^&*()_+=\[\]{}"'|\\-]+`
+	allowedCharacters = `[^a-zA-Z0-9 ~!@#$%^&*()_+=\[\]{}|\\-]+`
 	pUrgent           = 1
 	pNormal           = 0
 )
