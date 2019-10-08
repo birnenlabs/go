@@ -44,5 +44,5 @@ func (b *ukSinglesSource) findSongsInHtml(s string) []string {
 }
 
 func (b *ukSinglesSource) generateHistoryUrl(urlBase string, t time.Time) (string, time.Time) {
-	return urlBase + t.Format("20060102"), t.AddDate(0, 0, -7)
+	return strings.ReplaceAll(urlBase, "{DATE}", t.Format("20060102")), t.AddDate(0, 0, -7)
 }
