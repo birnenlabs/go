@@ -16,20 +16,21 @@ type webSource struct {
 	findSongsInHtml func(line string) []string
 	// Generates url for a given date and the previous valid timepoint (e.g. if page generates new content every week, returned time should be t minus week).
 	generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)
-	delimiter          string
+
+	// Public fields to be set by users of this class
+	Delimiter string
+	SongLimit int
 }
 
 func newWebSource(findSongsInHtml func(html string) []string, generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)) *webSource {
-	return newWebSourcePage("\n", findSongsInHtml, generateHistoryUrl)
-}
-
-func newWebSourcePage(delimiter string, findSongsInHtml func(html string) []string, generateHistoryUrl func(urlBase string, t time.Time) (string, time.Time)) *webSource {
 	return &webSource{
 		findSongsInHtml:    findSongsInHtml,
-		delimiter:          delimiter,
 		generateHistoryUrl: generateHistoryUrl,
 		httpClient:         ratelimit.New(&http.Client{}, time.Second*3),
+		Delimiter:          "\n",
+		SongLimit:          20000000,
 	}
+
 }
 
 func (w *webSource) Start(ctx context.Context, conf SourceJob, song chan<- Song) error {
@@ -123,12 +124,16 @@ func (w *webSource) findSongsInPage(url string) ([]string, error) {
 	}
 
 	var result []string
-	for _, s := range strings.Split(string(body), w.delimiter) {
+	for _, s := range strings.Split(string(body), w.Delimiter) {
 		found := w.findSongsInHtml(s)
 		result = append(result, found...)
+		if len(result) > w.SongLimit {
+			result = result[:w.SongLimit]
+			break
+		}
 	}
 
-	glog.V(3).Infof("%q returned %v results", url, len(result))
+	glog.V(2).Infof("%q returned %v results", url, len(result))
 	if len(result) == 0 {
 		return nil, fmt.Errorf("No results for %q", url)
 	}

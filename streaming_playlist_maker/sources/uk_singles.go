@@ -18,12 +18,13 @@ const (
 
 func newUkSingles() *ukSinglesSource {
 	result := &ukSinglesSource{}
-	result.webSource = newWebSourcePage("</td>", result.findSongsInHtml, result.generateHistoryUrl)
+	result.webSource = newWebSource(result.findSongsInHtml, result.generateHistoryUrl)
+	result.webSource.Delimiter = "</td>"
+	result.webSource.SongLimit = 10
 	return result
 }
 
 func (b *ukSinglesSource) findSongsInHtml(s string) []string {
-	// Line syntax: <div class="chart-list-item  " data-rank="2" data-artist="Artist" data-title="Title" data-has-content="true">
 	idxT := strings.Index(s, ukTitle)
 	if idxT != -1 {
 		idxA := strings.Index(s, ukArtist)
