@@ -103,7 +103,7 @@ func (c *CloudMessage) send(priority int, to string, msg string) {
 	payload := strings.Replace(msg, "\n", `\n`, -1)
 	reg, err := regexp.Compile(allowedCharacters)
 	if err != nil {
-		glog.Errorf("Could not send cloud message: %v.", err)
+		glog.Errorf("Could not send cloud message %q: %v.", msg, err)
 		return
 	}
 	payload = reg.ReplaceAllString(payload, " ")
@@ -115,14 +115,14 @@ func (c *CloudMessage) send(priority int, to string, msg string) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		glog.Errorf("Could not send cloud message: %v.", err)
+		glog.Errorf("Could not send cloud message %q: %v.", msg, err)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		body, _ := ioutil.ReadAll(resp.Body)
-		glog.Errorf("Could not send cloud message, response:\n%v", string(body))
+		glog.Errorf("Could not send cloud message %q, response:\n%v", msg, string(body))
 	}
 }
 
