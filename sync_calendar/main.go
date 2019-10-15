@@ -8,6 +8,7 @@ import (
 	"github.com/golang/glog"
 	"google.golang.org/api/calendar/v3"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +28,10 @@ const (
 	// Printed data will use special output to mark event as red aor requiring attention
 	MINUTES_TO_MARK_RED  = 5
 	MINUTES_TO_MARK_ATTN = 1
+	
+	MAX_EVENTS_TO_PRINT = 3
+	
+	NOT_ALLOWED_CHARACTERS = "[[:^ascii:]]"
 )
 
 var (
@@ -197,6 +202,7 @@ func main() {
 	var eventsToPrint []string
 	var eventsToAdd []*calendar.Event
 	var firstEvent *calendar.Event
+	var notAllowedCharacters = regexp.MustCompile(NOT_ALLOWED_CHARACTERS)
 
 	for _, i := range eventsSrc.Items {
 		if len(i.Id) == 0 {
@@ -239,11 +245,16 @@ func main() {
 		} else {
 			summary = trunc(i.Summary, 15)
 		}
-		eventsToPrint = append(eventsToPrint, start.Format("15:04: ")+summary)
+		eventsToPrint = append(eventsToPrint, start.Format("15:04: ")+notAllowedCharacters.ReplaceAllString(summary, ""))
 	}
 
 	if len(eventsToPrint) > 0 {
-		fmt.Printf(strings.Join(eventsToPrint, ", ") + "\n")
+		moreEventsStr := ""
+		if len(eventsToPrint) > MAX_EVENTS_TO_PRINT {
+			moreEventsStr = " [+" + strconv.Itoa(len(eventsToPrint) - MAX_EVENTS_TO_PRINT) + " more]"
+			eventsToPrint = eventsToPrint[:MAX_EVENTS_TO_PRINT]
+		}
+		fmt.Printf(strings.Join(eventsToPrint, ", ") + moreEventsStr + "\n")
 		fmt.Printf(eventsToPrint[0] + "\n")
 		fTime := dateTimeToTs(firstEvent.Start)
 		if fTime.After(now.Add(-MINUTES_TO_MARK_RED*time.Minute)) && fTime.Before(now.Add(MINUTES_TO_MARK_RED*time.Minute)) {
