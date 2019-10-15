@@ -1,8 +1,8 @@
 package mailgun
 
 import (
-	"birnenlabs.com/conf"
-	"birnenlabs.com/ratelimit"
+	"birnenlabs.com/lib/conf"
+	"birnenlabs.com/lib/ratelimit"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
@@ -18,6 +18,7 @@ const apiUser = "api"
 const EventFailed = "failed"
 const EventRejected = "rejected"
 const EventStored = "stored"
+const EventDelivered = "delivered"
 
 type Mailgun struct {
 	apiKey string
@@ -77,6 +78,25 @@ func (m *Mailgun) SendBounceEmail(email Email, failedRecipient string) error {
 
 }
 
+func (m *Mailgun) Forward(storageKey string, to string) error {
+	email, err := m.getMessage(storageKey)
+	if err != nil {
+		return err
+	}
+	// Mailgun does not support forwarding in their api, let's fake it with sending from no-reply@ email.
+	email.Text = fmt.Sprintf("---------- Forwarded message ---------\nFrom: %s\nSubject: %s\nTo: %s\n\n%s", email.From, email.Subject, email.To, email.Text)
+
+	// Overwrite To
+	email.To = to
+
+	if !m.IsInMyDomain(email.To) {
+		// Send forwards to our domain only.
+		return fmt.Errorf("Forwards should be sent to own domain only")
+	}
+
+	return m.SendEmail(*email)
+}
+
 func (m *Mailgun) ListFailedEvents(begin, end int64) ([]Item, error) {
 	return m.listEvents(begin, end, EventFailed)
 }
@@ -89,8 +109,28 @@ func (m *Mailgun) ListStoredEvents(begin, end int64) ([]Item, error) {
 	return m.listEvents(begin, end, EventStored)
 }
 
+func (m *Mailgun) ListDeliveredEvents(begin, end int64) ([]Item, error) {
+	return m.listEvents(begin, end, EventDelivered)
+}
+
 func (m *Mailgun) ListAllEvents(begin, end int64) ([]Item, error) {
-	return m.listEvents(begin, end, fmt.Sprintf("%s%%20OR%%20%s%%20OR%%20%s", EventFailed, EventRejected, EventStored))
+	return m.listEvents(begin, end, fmt.Sprintf("%s%%20OR%%20%s%%20OR%%20%s%%20OR%%20%s", EventFailed, EventRejected, EventStored, EventDelivered))
+}
+
+func (m *Mailgun) getMessage(storageKey string) (*Email, error) {
+	uri := fmt.Sprintf("https://storage%s.mailgun.net/v3/domains/%s/messages/%s", m.eu, m.domain, storageKey)
+
+	glog.Infof("getMessage url: %v", uri)
+	body, err := m.makeGetRequest(uri)
+	if err != nil {
+		return nil, err
+	}
+	var email Email
+	err = json.Unmarshal(body, &email)
+	if err != nil {
+		return nil, err
+	}
+	return &email, nil
 }
 
 func (m *Mailgun) listEvents(begin, end int64, event string) ([]Item, error) {
@@ -99,7 +139,7 @@ func (m *Mailgun) listEvents(begin, end int64, event string) ([]Item, error) {
 	nextUrl := fmt.Sprintf("https://api%s.mailgun.net/v3/%s/events?event=%s&begin=%v&end=%v", m.eu, m.domain, event, begin, end)
 
 	for nextUrl != "" {
-		glog.Infof("ListFailedEvent url: %v", nextUrl)
+		glog.Infof("ListEvents url: %v", nextUrl)
 		body, err := m.makeGetRequest(nextUrl)
 		if err != nil {
 			return nil, err
@@ -148,11 +188,22 @@ func createPayload(email Email) url.Values {
 	payload.Add("from", email.From)
 	payload.Add("subject", email.Subject)
 	payload.Add("text", email.Text)
-	payload.Add("to", email.To)
+	if len(email.To) > 0 {
+		payload.Add("to", email.To)
+	}
+	if len(email.Cc) > 0 {
+		payload.Add("cc", email.Cc)
+	}
+	if len(email.Bcc) > 0 {
+		payload.Add("bcc", email.Bcc)
+	}
 
-	if len(email.Reference) > 0 {
-		payload.Add("h:In-Reply-To", email.Reference)
-		payload.Add("h:References", email.Reference)
+	if len(email.References) > 0 {
+		payload.Add("h:References", email.References)
+	}
+
+	if len(email.InReplyTo) > 0 {
+		payload.Add("h:In-Reply-To", email.InReplyTo)
 	}
 
 	return payload
@@ -171,13 +222,13 @@ func (m *Mailgun) makeGetRequest(uri string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("response code: %v", resp.StatusCode)
-	}
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("response code: %v, message: %v", resp.StatusCode, err)
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("response code: %v, message: %v", resp.StatusCode, string(body))
 	}
 
 	return body, nil
@@ -197,13 +248,13 @@ func (m *Mailgun) makePostRequest(uri string, payload url.Values) ([]byte, error
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("response code: %v", resp.StatusCode)
-	}
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("response code: %v, message: %v", resp.StatusCode, err)
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("response code: %v, message: %v", resp.StatusCode, string(body))
 	}
 
 	return body, nil
