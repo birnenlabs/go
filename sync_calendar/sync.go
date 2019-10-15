@@ -184,17 +184,17 @@ func main() {
 	glog.Infof("Listed %v events in dst cal", len(eventsDst.Items))
 
 	fakeId := 0
-	existingEvents := make(map[string]*calendar.Event)
+	existingDstEvents := make(map[string]*calendar.Event)
 	for _, i := range eventsDst.Items {
 		if i.Source == nil || len(i.Source.Title) == 0 {
-			existingEvents[strconv.Itoa(fakeId)] = i
+			existingDstEvents[strconv.Itoa(fakeId)] = i
 			fakeId++
 		} else {
-			existingEvents[i.Source.Title] = i
+			existingDstEvents[i.Source.Title] = i
 		}
 	}
 
-	var events []string
+	var eventsToPrint []string
 	var eventsToAdd []*calendar.Event
 	var firstEvent *calendar.Event
 
@@ -212,12 +212,12 @@ func main() {
 		}
 		i.Location = organizeLocation(i.Location)
 
-		if existingEvents[i.Id] == nil || !eventsEqual(existingEvents[i.Id], i) {
+		if existingDstEvents[i.Id] == nil || !eventsEqual(existingDstEvents[i.Id], i) {
 			// If does not exist or not equal, let's add
 			eventsToAdd = append(eventsToAdd, i)
 		} else {
 			// If they exists and are equal, no need to add or delete so removing from map, which will be used for deletion
-			delete(existingEvents, i.Id)
+			delete(existingDstEvents, i.Id)
 		}
 
 		if len(i.Start.DateTime) == 0 {
@@ -234,17 +234,17 @@ func main() {
 			firstEvent = i
 		}
 		var summary string
-		if len(events) == 0 {
+		if len(eventsToPrint) == 0 {
 			summary = i.Summary
 		} else {
 			summary = trunc(i.Summary, 15)
 		}
-		events = append(events, start.Format("15:04: ")+summary)
+		eventsToPrint = append(eventsToPrint, start.Format("15:04: ")+summary)
 	}
 
-	if len(events) > 0 {
-		fmt.Printf(strings.Join(events, ", ") + "\n")
-		fmt.Printf(events[0] + "\n")
+	if len(eventsToPrint) > 0 {
+		fmt.Printf(strings.Join(eventsToPrint, ", ") + "\n")
+		fmt.Printf(eventsToPrint[0] + "\n")
 		fTime := dateTimeToTs(firstEvent.Start)
 		if fTime.After(now.Add(-MINUTES_TO_MARK_RED*time.Minute)) && fTime.Before(now.Add(MINUTES_TO_MARK_RED*time.Minute)) {
 			fmt.Printf("#ff5555\n")
@@ -257,7 +257,7 @@ func main() {
 	}
 
 	// Now let's sync calendars
-	for _, e := range existingEvents {
+	for _, e := range existingDstEvents {
 		// Existing events that were not matched needs to be removed from the calendar
 		glog.Infof("Removing %q from dst calendar", e.Summary)
 		err = calDst.Events.Delete(*dstCalName, e.Id).Do()
