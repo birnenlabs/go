@@ -91,12 +91,19 @@ func (s *connector) removeFromPlaylist(ctx context.Context, playlistId string, t
 	return nil
 }
 
+func (s *connector) listLiked(ctx context.Context) ([]SpotifyTrack, error) {
+  return s.listPlaylistUrl(ctx, "https://api.spotify.com/v1/me/tracks")
+}
+
 func (s *connector) listPlaylist(ctx context.Context, playlistId string) ([]SpotifyTrack, error) {
+  return s.listPlaylistUrl(ctx, fmt.Sprintf(
+		"https://api.spotify.com/v1/playlists/%s/tracks",
+		playlistId))
+}
+
+func (s *connector) listPlaylistUrl(ctx context.Context, nextUrl string) ([]SpotifyTrack, error) {
 	result := make([]SpotifyTrack, 0)
 
-	nextUrl := fmt.Sprintf(
-		"https://api.spotify.com/v1/playlists/%s/tracks",
-		playlistId)
 	for nextUrl != "" {
 		glog.V(2).Infof("List playlist url: %q.", nextUrl)
 		resp, err := s.httpClient.Get(nextUrl)

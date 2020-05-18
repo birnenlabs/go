@@ -62,6 +62,23 @@ func (s *Spotify) RemoveFromPlaylist(ctx context.Context, playlistId string, tra
 	return nil
 }
 
+func (s *Spotify) ListLiked(ctx context.Context) ([]*ImmutableSpotifyTrack, error) {
+  tracks, err := s.connector.listLiked(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Not using cache for liked songs for now.
+	result := make([]*ImmutableSpotifyTrack, len(tracks))
+	for i := range tracks {
+		result[i] = tracks[i].immutable()
+	}
+
+	glog.V(2).Infof("ListLiked: %v", tracks)
+	return result, nil
+
+}
+
 func (s *Spotify) ListPlaylist(ctx context.Context, playlistId string) ([]*ImmutableSpotifyTrack, error) {
 	if s.cache.IsCached(playlistId) {
 		glog.V(1).Infof("Found cached tracks for %v, not connecting to spotify.", playlistId)

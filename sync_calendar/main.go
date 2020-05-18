@@ -28,9 +28,9 @@ const (
 	// Printed data will use special output to mark event as red aor requiring attention
 	MINUTES_TO_MARK_RED  = 5
 	MINUTES_TO_MARK_ATTN = 1
-	
+
 	MAX_EVENTS_TO_PRINT = 3
-	
+
 	NOT_ALLOWED_CHARACTERS = "[[:^ascii:]]"
 )
 
@@ -251,7 +251,7 @@ func main() {
 	if len(eventsToPrint) > 0 {
 		moreEventsStr := ""
 		if len(eventsToPrint) > MAX_EVENTS_TO_PRINT {
-			moreEventsStr = " [+" + strconv.Itoa(len(eventsToPrint) - MAX_EVENTS_TO_PRINT) + " more]"
+			moreEventsStr = " [+" + strconv.Itoa(len(eventsToPrint)-MAX_EVENTS_TO_PRINT) + " more]"
 			eventsToPrint = eventsToPrint[:MAX_EVENTS_TO_PRINT]
 		}
 		fmt.Printf(strings.Join(eventsToPrint, ", ") + moreEventsStr + "\n")
