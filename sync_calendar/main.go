@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"google.golang.org/api/calendar/v3"
-	"os"
+	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,15 +22,16 @@ var (
 	srcCalName = flag.String("src_calendar", "primary", "Source calendar id, defaults to primary calendar.")
 	dstCalName = flag.String("dst_calendar", "", "Destination calendar id, required param.")
 	locPrefix  = flag.String("locations", "", "Comma separated prefixed of preffered locations.")
-	timeFromToSync = flag.Duration("time_from_to_sync", -1 * time.Hour, "Only events older than NOW+time_from_to_sync will be synced.");
-	timeUntilToSync = flag.Duration("time_until_to_sync", 60 * time.Hour, "Only events not older than NOW+time_until_to_sync will be synced.");
-	timeToClear = flag.Duration("time_to_clear", 24 * 60 * time.Hour, "Events in DST calendar will be removed between NOW-time_to_clear and NOW+time_to_clear.");
-	timeFromToDisplay = flag.Duration("time_from_to_display", -10 * time.Minute, "Only events older than NOW+time_from_to_display will be printed to stdout.");
-	timeUntilToDisplay = flag.Duration("time_until_to_display", 14 * time.Hour, "Only events not older than NOW+time_until_to_display will be printed to stdout.");
-	timeToMarkColor = flag.Duration("time_to_mark_color", 5 * time.Minute, "If next event starts between NOW-time_to_mark_color and NOW+time_to_mark_color, additional line with mark_color will be printed. Used by i3blocks.");
-	timeToMarkUrgent = flag.Duration("time_to_mark_urgent", 1 * time.Minute, "If next event starts between NOW-time_to_mark_urgent and NOW+time_to_mark_urgent, program will exit with return code 33. Used by i3blocks.");
-	markColor = flag.String("mark_color", "#ff5555", "Color for time_to_mark_color.");
-	maxEventsToPrint = flag.Int("max_events_to_print", 3, "Maximum number of events that should be printed to stdout.");
+	timeFromToSync = flag.Duration("time_from_to_sync", -1 * time.Hour, "Only events older than NOW+time_from_to_sync will be synced.")
+	timeUntilToSync = flag.Duration("time_until_to_sync", 60 * time.Hour, "Only events not older than NOW+time_until_to_sync will be synced.")
+	timeToClear = flag.Duration("time_to_clear", 24 * 60 * time.Hour, "Events in DST calendar will be removed between NOW-time_to_clear and NOW+time_to_clear.")
+	timeFromToDisplay = flag.Duration("time_from_to_display", -10 * time.Minute, "Only events older than NOW+time_from_to_display will be printed to stdout.")
+	timeUntilToDisplay = flag.Duration("time_until_to_display", 14 * time.Hour, "Only events not older than NOW+time_until_to_display will be printed to stdout.")
+	timeToMarkColor = flag.Duration("time_to_mark_color", 5 * time.Minute, "If next event starts between NOW-time_to_mark_color and NOW+time_to_mark_color, additional line with mark_color will be printed. Used by i3blocks.")
+	timeToMarkUrgent = flag.Duration("time_to_mark_urgent", 1 * time.Minute, "If next event starts between NOW-time_to_mark_urgent and NOW+time_to_mark_urgent, program will print 'URGENT' as a last line. Used by i3blocks.")
+	markColor = flag.String("mark_color", "#ff5555", "Color for time_to_mark_color.")
+	maxEventsToPrint = flag.Int("max_events_to_print", 3, "Maximum number of events that should be printed.")
+	output = flag.String("output", "/dev/stdout", "Output filename.")
 )
 
 func doIAttend(event *calendar.Event) bool {
@@ -241,23 +242,28 @@ func main() {
 		eventsToPrint = append(eventsToPrint, start.Format("15:04: ")+notAllowedCharacters.ReplaceAllString(summary, ""))
 	}
 
+	message := ""
 	if len(eventsToPrint) > 0 {
 		moreEventsStr := ""
 		if len(eventsToPrint) > *maxEventsToPrint {
 			moreEventsStr = " [+" + strconv.Itoa(len(eventsToPrint)-*maxEventsToPrint) + " more]"
 			eventsToPrint = eventsToPrint[:*maxEventsToPrint]
 		}
-		fmt.Printf(strings.Join(eventsToPrint, ", ") + moreEventsStr + "\n")
-		fmt.Printf(eventsToPrint[0] + "\n")
+		message = strings.Join(eventsToPrint, ", ") + moreEventsStr + "\n" + eventsToPrint[0] + "\n"
 		fTime := dateTimeToTs(firstEvent.Start)
 		if fTime.After(now.Add(-*timeToMarkColor)) && fTime.Before(now.Add(*timeToMarkColor)) {
-			fmt.Printf(*markColor + "\n")
+			message = message + *markColor + "\n"
 			if fTime.After(now.Add(-*timeToMarkUrgent)) && fTime.Before(now.Add(*timeToMarkUrgent)) {
-				os.Exit(33)
+				message = message + "URGENT\n"
 			}
 		}
 	} else {
-		fmt.Printf("No events\n")
+		message = "No events\n"
+	}
+	
+	err = ioutil.WriteFile(*output, []byte(message), 0644)
+	if err != nil {
+		glog.Errorf("Could not write file %v: %v.", *output, err)
 	}
 
 	// Now let's sync calendars
