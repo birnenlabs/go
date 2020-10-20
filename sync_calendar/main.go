@@ -15,22 +15,6 @@ import (
 )
 
 const (
-	// SRC calendar will be listed using these data as min and max time
-	HOURS_FROM_TO_SYNC  = -1
-	HOURS_UNTIL_TO_SYNC = 60
-
-	// Events in DST calendar will be removed between now-HOURS_TO_CLEAR and now+HOURS_TO_CLEAR
-	HOURS_TO_CLEAR = 365 * 24
-
-	// SRC calendar will be printed until these data as min and max time
-	MINUTES_FROM_TO_DISPLAY = -10
-	HOURS_UNTIL_TO_DISPLAY  = 14
-	// Printed data will use special output to mark event as red aor requiring attention
-	MINUTES_TO_MARK_RED  = 5
-	MINUTES_TO_MARK_ATTN = 1
-
-	MAX_EVENTS_TO_PRINT = 3
-
 	NOT_ALLOWED_CHARACTERS = "[[:^ascii:]]"
 )
 
@@ -38,6 +22,15 @@ var (
 	srcCalName = flag.String("src_calendar", "primary", "Source calendar id, defaults to primary calendar.")
 	dstCalName = flag.String("dst_calendar", "", "Destination calendar id, required param.")
 	locPrefix  = flag.String("locations", "", "Comma separated prefixed of preffered locations.")
+	timeFromToSync = flag.Duration("time_from_to_sync", -1 * time.Hour, "Only events older than NOW+time_from_to_sync will be synced.");
+	timeUntilToSync = flag.Duration("time_until_to_sync", 60 * time.Hour, "Only events not older than NOW+time_until_to_sync will be synced.");
+	timeToClear = flag.Duration("time_to_clear", 24 * 60 * time.Hour, "Events in DST calendar will be removed between NOW-time_to_clear and NOW+time_to_clear.");
+	timeFromToDisplay = flag.Duration("time_from_to_display", -10 * time.Minute, "Only events older than NOW+time_from_to_display will be printed to stdout.");
+	timeUntilToDisplay = flag.Duration("time_until_to_display", 14 * time.Hour, "Only events not older than NOW+time_until_to_display will be printed to stdout.");
+	timeToMarkColor = flag.Duration("time_to_mark_color", 5 * time.Minute, "If next event starts between NOW-time_to_mark_color and NOW+time_to_mark_color, additional line with mark_color will be printed. Used by i3blocks.");
+	timeToMarkUrgent = flag.Duration("time_to_mark_urgent", 1 * time.Minute, "If next event starts between NOW-time_to_mark_urgent and NOW+time_to_mark_urgent, program will exit with return code 33. Used by i3blocks.");
+	markColor = flag.String("mark_color", "#ff5555", "Color for time_to_mark_color.");
+	maxEventsToPrint = flag.Int("max_events_to_print", 3, "Maximum number of events that should be printed to stdout.");
 )
 
 func doIAttend(event *calendar.Event) bool {
@@ -175,14 +168,14 @@ func main() {
 	now := time.Now()
 
 	glog.Infof("Listing src events")
-	eventsSrc, err := calSrc.Events.List(*srcCalName).ShowDeleted(false).SingleEvents(true).TimeMin(now.Add(HOURS_FROM_TO_SYNC * time.Hour).Format(time.RFC3339)).TimeMax(now.Add(HOURS_UNTIL_TO_SYNC * time.Hour).Format(time.RFC3339)).OrderBy("startTime").Do()
+	eventsSrc, err := calSrc.Events.List(*srcCalName).ShowDeleted(false).SingleEvents(true).TimeMin(now.Add(*timeFromToSync).Format(time.RFC3339)).TimeMax(now.Add(*timeUntilToSync).Format(time.RFC3339)).OrderBy("startTime").Do()
 	if err != nil {
 		glog.Fatalf("Unable to list src events: %v", err)
 	}
 	glog.Infof("Listed %v events in src cal", len(eventsSrc.Items))
 
 	glog.Infof("Listing dst events")
-	eventsDst, err := calDst.Events.List(*dstCalName).ShowDeleted(false).SingleEvents(true).TimeMin(now.Add(-HOURS_TO_CLEAR * time.Hour).Format(time.RFC3339)).TimeMax(now.Add(HOURS_TO_CLEAR * time.Hour).Format(time.RFC3339)).OrderBy("startTime").Do()
+	eventsDst, err := calDst.Events.List(*dstCalName).ShowDeleted(false).SingleEvents(true).TimeMin(now.Add(-*timeToClear).Format(time.RFC3339)).TimeMax(now.Add(*timeToClear).Format(time.RFC3339)).OrderBy("startTime").Do()
 	if err != nil {
 		glog.Fatalf("Unable to list dst events: %v", err)
 	}
@@ -231,7 +224,7 @@ func main() {
 			continue
 		}
 		start := dateTimeToTs(i.Start)
-		if start.Before(now.Add(MINUTES_FROM_TO_DISPLAY*time.Minute)) || start.After(now.Add(HOURS_UNTIL_TO_DISPLAY*time.Hour)) {
+		if start.Before(now.Add(*timeFromToDisplay)) || start.After(now.Add(*timeUntilToDisplay)) {
 			glog.Infof("Too far back or future, sync but not print: %q", i.Summary)
 			continue
 		}
@@ -250,16 +243,16 @@ func main() {
 
 	if len(eventsToPrint) > 0 {
 		moreEventsStr := ""
-		if len(eventsToPrint) > MAX_EVENTS_TO_PRINT {
-			moreEventsStr = " [+" + strconv.Itoa(len(eventsToPrint)-MAX_EVENTS_TO_PRINT) + " more]"
-			eventsToPrint = eventsToPrint[:MAX_EVENTS_TO_PRINT]
+		if len(eventsToPrint) > *maxEventsToPrint {
+			moreEventsStr = " [+" + strconv.Itoa(len(eventsToPrint)-*maxEventsToPrint) + " more]"
+			eventsToPrint = eventsToPrint[:*maxEventsToPrint]
 		}
 		fmt.Printf(strings.Join(eventsToPrint, ", ") + moreEventsStr + "\n")
 		fmt.Printf(eventsToPrint[0] + "\n")
 		fTime := dateTimeToTs(firstEvent.Start)
-		if fTime.After(now.Add(-MINUTES_TO_MARK_RED*time.Minute)) && fTime.Before(now.Add(MINUTES_TO_MARK_RED*time.Minute)) {
-			fmt.Printf("#ff5555\n")
-			if fTime.After(now.Add(-MINUTES_TO_MARK_ATTN*time.Minute)) && fTime.Before(now.Add(MINUTES_TO_MARK_ATTN*time.Minute)) {
+		if fTime.After(now.Add(-*timeToMarkColor)) && fTime.Before(now.Add(*timeToMarkColor)) {
+			fmt.Printf(*markColor + "\n")
+			if fTime.After(now.Add(-*timeToMarkUrgent)) && fTime.Before(now.Add(*timeToMarkUrgent)) {
 				os.Exit(33)
 			}
 		}
