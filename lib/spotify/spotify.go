@@ -63,7 +63,7 @@ func (s *Spotify) RemoveFromPlaylist(ctx context.Context, playlistId string, tra
 }
 
 func (s *Spotify) ListLiked(ctx context.Context) ([]*ImmutableSpotifyTrack, error) {
-  tracks, err := s.connector.listLiked(ctx)
+	tracks, err := s.connector.listLiked(ctx)
 	if err != nil {
 		return nil, err
 	}
