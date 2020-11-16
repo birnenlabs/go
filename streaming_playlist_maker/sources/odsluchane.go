@@ -3,12 +3,12 @@ package sources
 import (
 	"fmt"
 	"github.com/golang/glog"
-	"html"
+	"net/url"
 	"strings"
 	"time"
 )
 
-const odsluchaneSpotifyUrl = "https://open.spotify.com/search/results/"
+const odsluchaneSpotifyUrl = "https://open.spotify.com/search/"
 
 type odsluchaneSource struct {
 	*webSource
@@ -27,7 +27,7 @@ func (o *odsluchaneSource) findSongsInHtml(s string) []string {
 		idx = strings.Index(s, "\"")
 		if idx != -1 {
 			s = s[0:idx]
-			s = html.UnescapeString(s)
+			s, _ = url.QueryUnescape(s)
 			glog.V(3).Infof("Odsluchane: %v", s)
 			return []string{s}
 		}
