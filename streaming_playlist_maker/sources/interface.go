@@ -41,6 +41,8 @@ func Create(ctx context.Context, sourceType string) (SongSource, error) {
 		return newUkSingles(), nil
 	case "spotify-liked":
 		return newSpotifyLiked(), nil
+	case "spotify-merge":
+		return newSpotifyMerge(), nil
 	default:
 		return nil, fmt.Errorf("Invalid source type definition (%v).", sourceType)
 	}
