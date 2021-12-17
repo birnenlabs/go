@@ -30,6 +30,9 @@ const htmlTemplateOuter = `
 <title>Waschplan</title>
 <meta charset="utf-8" />
 <style type='text/css'>
+  body {
+	  font-family: "Liberation Sans", sans;
+  }
   .header {
     width: 28cm;
   }
