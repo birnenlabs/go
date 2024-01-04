@@ -1,8 +1,8 @@
 package main
 
 import (
-	glog "birnenlabs.com/lib/alog"
-	"birnenlabs.com/lib/mailgun"
+	glog "birnenlabs.com/go/lib/alog"
+	"birnenlabs.com/go/lib/mailgun"
 	"regexp"
 )
 

@@ -2,7 +2,7 @@
 package alog
 
 import (
-	"birnenlabs.com/lib/automate"
+	"birnenlabs.com/go/lib/automate"
 	"fmt"
 	"github.com/golang/glog"
 )

@@ -3,8 +3,8 @@ package spotify
 // Methods that are using spotify API. They are using rate limited client.
 
 import (
-	"birnenlabs.com/lib/oauth"
-	"birnenlabs.com/lib/ratelimit"
+	"birnenlabs.com/go/lib/oauth"
+	"birnenlabs.com/go/lib/ratelimit"
 	"bytes"
 	"context"
 	"encoding/json"

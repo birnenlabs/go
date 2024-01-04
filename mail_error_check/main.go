@@ -1,9 +1,9 @@
 package main
 
 import (
-	glog "birnenlabs.com/lib/alog"
-	"birnenlabs.com/lib/conf"
-	"birnenlabs.com/lib/mailgun"
+	glog "birnenlabs.com/go/lib/alog"
+	"birnenlabs.com/go/lib/conf"
+	"birnenlabs.com/go/lib/mailgun"
 	"flag"
 	"fmt"
 	"strings"

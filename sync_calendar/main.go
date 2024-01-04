@@ -1,7 +1,7 @@
 package main
 
 import (
-	"birnenlabs.com/lib/oauth"
+	"birnenlabs.com/go/lib/oauth"
 	"context"
 	"flag"
 	"fmt"

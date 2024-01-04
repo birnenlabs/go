@@ -1,10 +1,10 @@
 package main
 
 import (
-	glog "birnenlabs.com/lib/alog"
-	"birnenlabs.com/lib/conf"
-	"birnenlabs.com/streaming_playlist_maker/savers"
-	"birnenlabs.com/streaming_playlist_maker/sources"
+	glog "birnenlabs.com/go/lib/alog"
+	"birnenlabs.com/go/lib/conf"
+	"birnenlabs.com/go/streaming_playlist_maker/savers"
+	"birnenlabs.com/go/streaming_playlist_maker/sources"
 	"context"
 	"flag"
 	"fmt"

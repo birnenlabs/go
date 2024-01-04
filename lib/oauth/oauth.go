@@ -2,7 +2,7 @@
 package oauth
 
 import (
-	"birnenlabs.com/lib/conf"
+	"birnenlabs.com/go/lib/conf"
 	"context"
 	"fmt"
 	"github.com/golang/glog"

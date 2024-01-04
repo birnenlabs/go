@@ -1,7 +1,7 @@
 package main
 
 import (
-	"birnenlabs.com/lib/mailgun"
+	"birnenlabs.com/go/lib/mailgun"
 	"testing"
 )
 

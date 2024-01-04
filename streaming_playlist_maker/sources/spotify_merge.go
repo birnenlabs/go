@@ -1,7 +1,7 @@
 package sources
 
 import (
-	"birnenlabs.com/lib/spotify"
+	"birnenlabs.com/go/lib/spotify"
 	"context"
 	"strings"
 )

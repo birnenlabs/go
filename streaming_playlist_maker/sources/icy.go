@@ -1,7 +1,7 @@
 package sources
 
 import (
-	"birnenlabs.com/lib/icy"
+	"birnenlabs.com/go/lib/icy"
 	"context"
 	"github.com/golang/glog"
 	"strings"

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"birnenlabs.com/streaming_playlist_maker/savers"
-	"birnenlabs.com/streaming_playlist_maker/sources"
+	"birnenlabs.com/go/streaming_playlist_maker/savers"
+	"birnenlabs.com/go/streaming_playlist_maker/sources"
 )
 
 type Job struct {

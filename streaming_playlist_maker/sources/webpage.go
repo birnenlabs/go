@@ -1,7 +1,7 @@
 package sources
 
 import (
-	"birnenlabs.com/lib/ratelimit"
+	"birnenlabs.com/go/lib/ratelimit"
 	"context"
 	"fmt"
 	"github.com/golang/glog"

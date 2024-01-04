@@ -3,7 +3,7 @@ package gcontacts
 // Methods that are using Google Contacts GData API.
 
 import (
-	"birnenlabs.com/lib/oauth"
+	"birnenlabs.com/go/lib/oauth"
 	"context"
 	"encoding/xml"
 	"fmt"

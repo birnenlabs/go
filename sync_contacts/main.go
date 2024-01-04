@@ -1,9 +1,9 @@
 package main
 
 import (
-	glog "birnenlabs.com/lib/alog"
-	"birnenlabs.com/lib/conf"
-	"birnenlabs.com/lib/gcontacts"
+	glog "birnenlabs.com/go/lib/alog"
+	"birnenlabs.com/go/lib/conf"
+	"birnenlabs.com/go/lib/gcontacts"
 	"context"
 	"flag"
 	"fmt"

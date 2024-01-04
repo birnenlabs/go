@@ -1,7 +1,7 @@
 package main
 
 import (
-	"birnenlabs.com/lib/conf"
+	"birnenlabs.com/go/lib/conf"
 	"fmt"
 	"time"
 )
